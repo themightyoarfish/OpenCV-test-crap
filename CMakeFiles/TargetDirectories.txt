@@ -1,0 +1,2 @@
+/Users/Rasmus/Documents/Uni/Semester 8/Bachelor's Thesis/OpenCVTest/CMakeFiles/canny.dir
+/Users/Rasmus/Documents/Uni/Semester 8/Bachelor's Thesis/OpenCVTest/CMakeFiles/transpTest.dir
