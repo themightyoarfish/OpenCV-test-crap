@@ -21,7 +21,6 @@ int main(int argc, const char *argv[])
       Mat camera_matrix, dist_coefficients, img_1_undist, img_2_undist;
       fs["Camera_Matrix"] >> camera_matrix;
       fs["Distortion_Coefficients"] >> dist_coefficients;
-      cout << "Camera Matrix: " << camera_matrix << endl;
       fs.release();
       /* img_1_undist = img_1; */
       /* img_2_undist = img_2; */
@@ -29,6 +28,8 @@ int main(int argc, const char *argv[])
       undistort(img_2, img_2_undist, camera_matrix, dist_coefficients);
       resize(img_1_undist, img_1_undist, Size(img_1_undist.cols / 5, img_1_undist.rows / 5));
       resize(img_2_undist, img_2_undist, Size(img_2_undist.cols / 5, img_2_undist.rows / 5));
+      camera_matrix = camera_matrix / 5.0;
+      camera_matrix.at<double>(2,2) = 1;
 
 
       if( !img_1_undist.data || !img_2_undist.data )
@@ -61,13 +62,14 @@ int main(int argc, const char *argv[])
          imgpts2.push_back(KeyPoints_2[matches[i].trainIdx].pt); 
       }
       Mat mask;
-      Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_RANSAC, .1, 0.99, mask);
+      Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_RANSAC, 5, 0.99, mask);
       cout << "Number of inliers: " << sum(mask)[0] << endl;
       Mat A = camera_matrix;
-      Mat E = A.t() * F * A;
+      Mat E = F; // we undistorted images above so camera matrix now is unity matrix which means E = F (see Ma et al, ch. 6, p. 178)
 
       //Perfrom SVD on E
-      SVD decomp = SVD(E, SVD::FULL_UV);
+      SVD decomp = SVD(E);
+      cout << "W=" << decomp.w << endl;
 
       //U
       Mat U = decomp.u;
@@ -92,7 +94,7 @@ int main(int argc, const char *argv[])
       W.at<double>(2, 2) = 1;
 
       cout << "computed rotation: " << endl;
-      Mat R = U * W.t() * V.t();
+      Mat R = U * W.t() * V;
       double theta_x, theta_y, theta_z;
       theta_x = atan2(R.at<double>(2,1), R.at<double>(2,2));
       theta_y = atan2(-R.at<double>(2,0), sqrt(pow(R.at<double>(2,1), 2) + pow(R.at<double>(2,2),2)));
