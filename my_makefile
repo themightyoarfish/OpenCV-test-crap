@@ -32,6 +32,6 @@ $(BINDIR)/canny: canny/canny.cpp
 $(BINDIR)/transpTest: edgesToPng/transpTest.cpp
 	$(CXX_COMPILER) -o $(BINDIR)/transpTest ${OPENCV2FLAGS} ${OPENCV2LIBS} $(CFLAGS) $<
 $(BINDIR)/correctImage: calibration/correctImage.cpp
-	$(CXX_COMPILER) -o $(BINDIR)/correctImage ${OPENCV2FLAGS} ${OPENCV2LIBS} $(CFLAGS) $<
+	$(CXX_COMPILER) -o $(BINDIR)/correctImage ${OPENCV3FLAGS} ${OPENCV3LIBS} $(CFLAGS) $<
 clean:
 	$(RM) $(addprefix $(BINDIR)/, $(BINS))
