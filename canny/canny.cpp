@@ -1,5 +1,4 @@
-#include "opencv2/imgproc/IMGPROC.HPP"
-#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/opencv.hpp>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -50,10 +49,12 @@ int main( int argc, char** argv )
   dst.create( src.size(), src.type() );
 
   /// Convert the image to grayscale
-  cvtColor( src, src_gray, CV_BGR2GRAY );
+  /* cvtColor( src, src_gray, CV_BGR2GRAY ); */
+  cvtColor( src, src_gray, COLOR_BGR2GRAY ); // OCV 3.0
 
   /// Create a window
-  namedWindow( window_name, CV_WINDOW_AUTOSIZE );
+  /* namedWindow( window_name, CV_WINDOW_AUTOSIZE ); */
+  namedWindow( window_name, WINDOW_AUTOSIZE ); // OCV 3.0
 
   /// Create a Trackbar for user to enter threshold
   createTrackbar( "Min Threshold:", window_name, &lowThreshold, max_lowThreshold, CannyThreshold );

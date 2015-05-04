@@ -1,0 +1,10 @@
+OPENCVFLAGS=`pkg-config --cflags opencv3`
+OPENCVLIBS=`pkg-config --libs opencv3`
+all: stereo canny transpTest
+stereo:
+	echo ${OPENCVFLAGS}
+	gcc -o stereo ${OPENCVFLAGS} ${OPENCVLIBS} -lstdc++ -w -O3  ../stereo/stereo.cpp
+canny:
+	gcc -o canny ${OPENCVFLAGS}S ${OPENCVLIBS} -lstdc++ -w -O3  ../canny/canny.cpp
+transpTest:
+	gcc -o transpTest ${OPENCVFLAGS} ${OPENCVLIBS} -lstdc++ -w -O3  ../edgesToPng/transpTest.cpp

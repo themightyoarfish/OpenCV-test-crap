@@ -1,3 +1,5 @@
+#define OPENCV_VERSION_3
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
@@ -12,7 +14,11 @@ int main(int argc, const char *argv[])
       return 1;
    }
 
+#ifdef OPENCV_VERSION_3
+   Mat src = imread(argv[1], IMREAD_COLOR);
+#else
    Mat src = imread(argv[1], CV_LOAD_IMAGE_COLOR);
+#endif
    //Our color image
    if (src.empty())
    {
@@ -33,7 +39,11 @@ int main(int argc, const char *argv[])
    Canny( src, src, low, high, kernelSz );
    cout << "Type of src after Canny: " << src.type() << ", num channels: " << src.channels() << endl;
    imwrite("edge_image.png", src);
+#ifdef OPENCV_VERSION_3
+   cvtColor(src, src, COLOR_GRAY2RGB);
+#else
    cvtColor(src, src, CV_GRAY2RGB);
+#endif
    cout << "Type of src after conversion: " << src.type() << endl;
    Mat transparent(src.rows,src.cols, CV_8UC4);
    /* cout << "src: " << src.channels() << ", " << src.depth() << endl; */
