@@ -1,25 +1,24 @@
 set(CMAKE_CXX_COMPILER "/opt/local/bin/g++")
 set(CMAKE_C_COMPILER "/opt/local/bin/gcc")
-set( CMAKE_CXX_FLAGS         "-O3 -w -lstdc++" ) # -DSHOW_IMGS to display images
-find_package( OpenCV REQUIRED )
+set(CMAKE_CXX_FLAGS "-O3 -w -lstdc++") # -DSHOW_IMGS to display images
+find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # manual specification of the OpenCVConfig.cmake path is necessary since otherwise, cmake assigns /opt/local a higher priority and ocv2.4 will be used
+
 if(OpenCV_FOUND)
-   message("Found OpenCV")
-   set(OpenCV_LIB_DIR "/usr/local/lib/")
+   message("OpenCV_LIB_DIRS=${OpenCV_LIB_DIR}")
+   include_directories(${OpenCV_INCLUDE_DIRS})
+
+   add_executable(cannyDetector canny/canny.cpp)
+   add_executable(transpTest edgesToPng/transpTest.cpp)
+   add_executable(correctImage calibration/correctImage.cpp)
+   add_executable(stereo stereo/stereo_v3.cpp)
+
+   target_link_libraries(cannyDetector ${OpenCV_LIBS})
+   target_link_libraries(transpTest ${OpenCV_LIBS})
+   target_link_libraries(correctImage ${OpenCV_LIBS})
+   target_link_libraries(stereo ${OpenCV_LIBS})
 endif(OpenCV_FOUND)
 
-get_cmake_property(_v VARIABLES)
-foreach(_v ${_v})
-   message(STATUS "${_v}=${${_v}}")
-endforeach()
-
-
-
-add_executable( cannyDetector canny/canny.cpp )
-add_executable( transpTest edgesToPng/transpTest.cpp)
-add_executable( correctImage calibration/correctImage.cpp)
-add_executable( stereo stereo/stereo.cpp)
-
-target_link_libraries( cannyDetector ${OpenCV_LIBS} )
-target_link_libraries( transpTest ${OpenCV_LIBS} )
-target_link_libraries( correctImage ${OpenCV_LIBS} )
-target_link_libraries( stereo ${OpenCV_LIBS} )
+#get_cmake_property(_v VARIABLES)
+#foreach(_v ${_v})
+#   message(STATUS "${_v}=${${_v}}")
+#endforeach()

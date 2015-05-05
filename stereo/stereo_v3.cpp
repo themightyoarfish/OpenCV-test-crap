@@ -20,8 +20,8 @@ int main(int argc, const char *argv[])
       cout << "Usage: " << argv[0] << " left_img right_img calib_file.xml" << endl;
       return -1;
    }
-   Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE );
-   Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE );
+   Mat img_1 = imread(argv[1], IMREAD_GRAYSCALE);
+   Mat img_2 = imread(argv[2], IMREAD_GRAYSCALE);
 
    FileStorage fs(argv[3], FileStorage::READ);
    if (fs.isOpened())
@@ -41,10 +41,14 @@ int main(int argc, const char *argv[])
       camera_matrix = camera_matrix / 5.0;
       camera_matrix.at<double>(2,2) = 1;
 
-      if(!img_1_undist.data || !img_2_undist.data) return -1;
+      if(!img_1_undist.data || !img_2_undist.data) 
+      {
+         cout << "At least one of the images has no data." << endl;
+         return -1;
+      }
 
       // Feature detection + extraction
-      int minHessian = 4000; // changing this dramatically affects the result, set lower if you want to see nothing 
+      int minHessian = 800; // changing this dramatically affects the result, set lower if you want to see nothing 
       vector<KeyPoint> KeyPoints_1, KeyPoints_2;
       Mat descriptors_1, descriptors_2;
 
@@ -54,8 +58,8 @@ int main(int argc, const char *argv[])
 
       // Find correspondences
       BFMatcher matcher(NORM_L1, true);
-      vector< DMatch > matches;
-      matcher.match( descriptors_1, descriptors_2, matches );
+      vector<DMatch> matches;
+      matcher.match(descriptors_1, descriptors_2, matches);
 
 
       // Convert correspondences to vectors
@@ -72,7 +76,7 @@ int main(int argc, const char *argv[])
       imgpts2_undist = imgpts2;
       /* undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients); */
       /* undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients); */
-      Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.99, 5, mask);
+      Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.99, 9, mask);
 
       Mat R, t; // rotation and translation
       recoverPose(E, imgpts1_undist, imgpts2_undist, R, t);
