@@ -1,12 +1,11 @@
 set(CMAKE_CXX_COMPILER "/opt/local/bin/g++")
 set(CMAKE_C_COMPILER "/opt/local/bin/gcc")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -w") # -DSHOW_IMGS to display images
-set(CMAKE_CXX_FLAGS "-lstdc++")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -w") 
+set(CMAKE_CXX_FLAGS "-lstdc++ -std=c++11")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wreturn-type")
 find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # manual specification of the OpenCVConfig.cmake path is necessary since otherwise, cmake assigns /opt/local a higher priority and ocv2.4 will be used
 
 if(OpenCV_FOUND)
-   message("OpenCV_LIB_DIRS=${OpenCV_LIB_DIR}")
    include_directories(${OpenCV_INCLUDE_DIRS})
    include_directories("stereo/")
 

@@ -16,6 +16,7 @@ static ostream& operator<<(ostream& os, const DetectorData& d)
       << "\tDescriptor size: " << d.descriptor_size << "\n"
       << "\tDescriptor channels: " << d.descriptor_channels << "\n"
       << "\tthreshold: " << d.threshold << "\n";
+   return os;
 }
 static ostream& operator<<(ostream& os, const CommandArgs& d)
 {
@@ -28,6 +29,7 @@ static ostream& operator<<(ostream& os, const CommandArgs& d)
       << "Epilines: " << d.epilines << "\n"
       << "Detector type: " << (d.detector == DETECTOR_SURF ? "SURF" : "KAZE") << "\n"
       << d.detector_data;
+      return os;
 }
 
 static CommandArgs parse_args(int& argc, char* const* argv)
@@ -122,12 +124,13 @@ int main(int argc, char *argv[])
    if (!check_args(args)) 
    {
       cout << "Usage: " << argv[0] << " --left IMG --right IMG2 --calib CALIB_FILE "
-         "[--resize n] [--detector (KAZE|SURF) [--hessianT n] [--octaves n] [--octave-layers = n] [--no-extend] [--upright] [--descriptor-size n] [--descriptor-channels {1,2,3}] [--threshold n]] [--epilines] [--undistort] [--no-undistort]" << endl;
+         "[--resize n] [--detector (KAZE|SURF) [--hessianT n] [--octaves n] [--octave-layers = n] "
+         "[--no-extend] [--upright] [--descriptor-size n] [--descriptor-channels {1,2,3}] [--threshold n]] "
+         "[--epilines] [--undistort] [--no-undistort]" << endl;
       return -1;
    }
-   cout << args << endl;
-   Mat img_1 = imread(args.left_image_name, IMREAD_GRAYSCALE);
-   Mat img_2 = imread(args.right_image_name, IMREAD_GRAYSCALE);
+   Mat img_1 = imread(args.left_image_name, IMREAD_COLOR);
+   Mat img_2 = imread(args.right_image_name, IMREAD_COLOR);
 
    FileStorage fs(args.calib_file_name, FileStorage::READ);
    if (fs.isOpened())
@@ -152,7 +155,7 @@ int main(int argc, char *argv[])
          resize(img_2_undist, img_2_undist, Size(img_2_undist.cols / args.resize_factor,
                   img_2_undist.rows / args.resize_factor));
          // scale matrix down according to changed resolution
-         camera_matrix = camera_matrix / 5.0;
+         camera_matrix = camera_matrix / args.resize_factor;
          camera_matrix.at<double>(2,2) = 1;
       }
 
@@ -191,6 +194,7 @@ int main(int argc, char *argv[])
 
       // Convert correspondences to vectors
       vector<Point2f>imgpts1,imgpts2;
+      cout << "Number of matches " << matches.size() << endl;
       for(unsigned int i = 0; i<matches.size(); i++) 
       {
          imgpts1.push_back(KeyPoints_1[matches[i].queryIdx].pt); 
@@ -201,10 +205,10 @@ int main(int argc, char *argv[])
       vector<Point2f> imgpts1_undist, imgpts2_undist;
       imgpts1_undist = imgpts1;
       imgpts2_undist = imgpts2;
-      /* undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients); */
+      /* undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients); */ // this doesn't work
       /* undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients); */
-      Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.99, 9, mask);
-      correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist);
+      Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
+      /* correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist); */
 
       Mat R, t; // rotation and translation
       cout << "Pose recovery inliers: " << recoverPose(E, imgpts1_undist, imgpts2_undist, R, t) << endl;
@@ -214,7 +218,7 @@ int main(int argc, char *argv[])
       theta_y = atan2(-R.at<double>(2,0), sqrt(pow(R.at<double>(2,1), 2) + pow(R.at<double>(2,2),2)));
       theta_z = atan2(R.at<double>(1,0),  R.at<double>(0,0));
 
-      cout << "Translataion: " << t << endl;
+      cout << "Translation: " << t << endl;
 
       cout << "\tx rotation: " << theta_x * 180 / M_PI << endl;
       cout << "\ty rotation: " << theta_y * 180 / M_PI << endl;
