@@ -34,6 +34,13 @@ typedef struct
    bool epilines = false;
    detector_type detector = DETECTOR_KAZE;
    DetectorData detector_data;
+   bool check_args()
+   {
+      if (0 == strcmp(left_image_name,"n/a") || 0 == strcmp(left_image_name, "n/a") || 0 == strcmp(calib_file_name, "n/a")) 
+         return false;
+      else return true;
+   }
+
 } CommandArgs;
 
 static void drawEpilines(const Mat& image_points, int whichImage, Mat& F, Mat& canvas);
