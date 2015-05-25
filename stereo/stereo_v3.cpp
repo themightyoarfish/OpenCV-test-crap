@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
    if (!args.check_args()) 
    {
       cout << "Usage: " << argv[0] << " --left IMG --right IMG2 --calib CALIB_FILE "
-         "[--resize n] [--detector (KAZE|SURF) [--hessianT n] [--octaves n] [--octave-layers = n] "
+         "[--resize n] [--detector (KAZE|SURF) [--hessianT n] [--octaves n] [--octave-layers n] "
          "[--no-extend] [--upright] [--descriptor-size n] [--descriptor-channels {1,2,3}] [--threshold n]] "
          "[--epilines] [--no-undistort]" << endl;
       return -1;
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
       Ptr<Feature2D> feat_detector;
       if (args.detector == DETECTOR_KAZE) 
       {
-      feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_KAZE_UPRIGHT : AKAZE::DESCRIPTOR_KAZE, 
+      feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_MLDB_UPRIGHT : AKAZE::DESCRIPTOR_MLDB, 
             args.detector_data.descriptor_size,
             args.detector_data.descriptor_channels,
             args.detector_data.threshold,
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
       feat_detector->detectAndCompute(img_2_undist, noArray(), KeyPoints_2, descriptors_2);
 
       // Find correspondences
-      BFMatcher matcher(NORM_L2, true);
+      BFMatcher matcher(args.detector == DETECTOR_KAZE ? NORM_HAMMING : NORM_L2, true);
       vector<DMatch> matches;
       matcher.match(descriptors_1, descriptors_2, matches);
 
@@ -116,21 +116,21 @@ int main(int argc, char *argv[])
 
       cout << "Translation [x y z]: " << t.t() << endl;
 
-      double err = computeReprojectionError(imgpts1_undist, imgpts2_undist, mask, E);
-      cout << "average reprojection err = " <<  err << endl;
-      if (args.epilines)
-      {
-         drawEpilines(Mat(imgpts1_undist), 1, E, img_2_undist);
-         drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist);
-      }
+/*       double err = computeReprojectionError(imgpts1_undist, imgpts2_undist, mask, E); */
+/*       cout << "average reprojection err = " <<  err << endl; */
+/*       if (args.epilines) */
+/*       { */
+/*          drawEpilines(Mat(imgpts1_undist), 1, E, img_2_undist); */
+/*          drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist); */
+/*       } */
 
-      Mat img_matches; // side-by-side comparison
-      drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask
-            matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask);
-      // display
-      namedWindow("Matches", CV_WINDOW_NORMAL);
-      imshow("Matches", img_matches);
-      waitKey(0);
+/*       Mat img_matches; // side-by-side comparison */
+/*       drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask */
+/*             matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask); */
+/*       // display */
+/*       namedWindow("Matches", CV_WINDOW_NORMAL); */
+/*       imshow("Matches", img_matches); */
+/*       waitKey(0); */
 
       return 0;
    } else
