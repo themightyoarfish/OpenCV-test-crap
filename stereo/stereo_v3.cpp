@@ -116,21 +116,21 @@ int main(int argc, char *argv[])
 
       cout << "Translation [x y z]: " << t.t() << endl;
 
-/*       double err = computeReprojectionError(imgpts1_undist, imgpts2_undist, mask, E); */
-/*       cout << "average reprojection err = " <<  err << endl; */
-/*       if (args.epilines) */
-/*       { */
-/*          drawEpilines(Mat(imgpts1_undist), 1, E, img_2_undist); */
-/*          drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist); */
-/*       } */
+      double err = computeReprojectionError(imgpts1_undist, imgpts2_undist, mask, E);
+      cout << "average reprojection err = " <<  err << endl;
+      if (args.epilines)
+      {
+         drawEpilines(Mat(imgpts1_undist), 1, E, img_2_undist);
+         drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist);
+      }
 
-/*       Mat img_matches; // side-by-side comparison */
-/*       drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask */
-/*             matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask); */
-/*       // display */
-/*       namedWindow("Matches", CV_WINDOW_NORMAL); */
-/*       imshow("Matches", img_matches); */
-/*       waitKey(0); */
+      Mat img_matches; // side-by-side comparison
+      drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask
+            matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask);
+      // display
+      namedWindow("Matches", CV_WINDOW_NORMAL);
+      imshow("Matches", img_matches);
+      waitKey(0);
 
       return 0;
    } else
