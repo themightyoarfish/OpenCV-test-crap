@@ -1,5 +1,6 @@
 #include <opencv2/xfeatures2d/nonfree.hpp>
 #include <cmath>
+#include <chrono>
 #include "stereo_v3.hpp"
 
 
@@ -69,13 +70,26 @@ int main(int argc, char *argv[])
          feat_detector = xfeatures2d::SURF::create(args.detector_data.minHessian, 
                args.detector_data.nOctaves, args.detector_data.nOctaveLayersAkaze, args.detector_data.extended, args.detector_data.upright);
       }
+
+      chrono::high_resolution_clock::time_point start = chrono::high_resolution_clock::now();
+
       feat_detector->detectAndCompute(img_1_undist, noArray(), KeyPoints_1, descriptors_1);
       feat_detector->detectAndCompute(img_2_undist, noArray(), KeyPoints_2, descriptors_2);
+
+      chrono::high_resolution_clock::time_point done_detection = chrono::high_resolution_clock::now();
+      chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double>>(done_detection - start);
+      cout << "Detection took " << time_span.count() << " seconds." << endl;
+
 
       // Find correspondences
       BFMatcher matcher(args.detector == DETECTOR_KAZE ? NORM_HAMMING : NORM_L2, true);
       vector<DMatch> matches;
       matcher.match(descriptors_1, descriptors_2, matches);
+      chrono::high_resolution_clock::time_point done_matching = chrono::high_resolution_clock::now();
+      time_span = chrono::duration_cast<chrono::duration<double>>(done_matching - done_detection);
+      cout << "Matching took " << time_span.count() << "seconds." << endl;
+      time_span = chrono::duration_cast<chrono::duration<double>>(done_matching - start);
+      cout << "Complete procedure took " << time_span.count() << " seconds for " << KeyPoints_1.size() + KeyPoints_2.size() << " total keypoints" << endl;
 
 
       // Convert correspondences to vectors
