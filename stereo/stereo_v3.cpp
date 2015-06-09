@@ -241,24 +241,26 @@ static ostream& operator<<(ostream& os, const CommandArgs& d)
       return os;
 }
 
+#define IS_ARG(vec,param) 0 == strcmp(vec,param) && argc > i + 1
+
 static CommandArgs parse_args(int& argc, char* const* argv)
 {
    CommandArgs args;
    for (int i = 1; i < argc; i++) 
    {
-      if (0 == strcmp(argv[i], "--left") && argc > i + 1) 
+      if (IS_ARG(argv[i], "--left")) 
       {
          args.left_image_name = argv[++i];
       }
-      else if (0 == strcmp(argv[i], "--right") && argc > i + 1) 
+      else if (IS_ARG(argv[i], "--right")) 
       {
          args.right_image_name = argv[++i];
       }
-      else if (0 == strcmp(argv[i], "--calib") && argc > i + 1) 
+      else if (IS_ARG(argv[i], "--calib")) 
       {
          args.calib_file_name = argv[++i];
       }
-      else if (0 == strcmp(argv[i], "--resize") && argc > i + 1) 
+      else if (IS_ARG(argv[i], "--resize")) 
       {
          args.resize_factor = atoi(argv[++i]);
       }
@@ -270,7 +272,7 @@ static CommandArgs parse_args(int& argc, char* const* argv)
       {
          args.epilines = true;
       }
-      else if (0 == strcmp(argv[i], "--detector") && argc > i + 1) 
+      else if (IS_ARG(argv[i], "--detector")) 
       { 
          if (0 == strcmp(argv[i+1], "KAZE")) 
          {
@@ -283,15 +285,15 @@ static CommandArgs parse_args(int& argc, char* const* argv)
          else cout << "Unknonw detector " << argv[i+1] << endl;
          i++;
       }
-      else if (0 == strcmp(argv[i], "--hessianT") && argc > i + 1)
+      else if (IS_ARG(argv[i], "--hessianT"))
       {
          args.detector_data.minHessian = atoi(argv[++i]);
       }
-      else if (0 == strcmp(argv[i], "--octaves") && argc > i + 1)
+      else if (IS_ARG(argv[i], "--octaves"))
       {
          args.detector_data.nOctaves = atoi(argv[++i]);
       }
-      else if (0 == strcmp(argv[i], "--octave-layers") && argc > i + 1)
+      else if (IS_ARG(argv[i], "--octave-layers"))
       {
          args.detector_data.nOctaveLayersSurf = args.detector_data.nOctaveLayersAkaze = atoi(argv[++i]);
       }
@@ -303,11 +305,11 @@ static CommandArgs parse_args(int& argc, char* const* argv)
       {
          args.detector_data.upright = true;
       }
-      else if (0 == strcmp(argv[i], "--descriptor-size") && argc > i + 1)
+      else if (IS_ARG(argv[i], "--descriptor-size"))
       {
          args.detector_data.descriptor_size = atoi(argv[++i]);
       }
-      else if (0 == strcmp(argv[i], "--descriptor-channels") && argc > i + 1)
+      else if (IS_ARG(argv[i], "--descriptor-channels"))
       {
          args.detector_data.descriptor_channels = atoi(argv[++i]);
       }
