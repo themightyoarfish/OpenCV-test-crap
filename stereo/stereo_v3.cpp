@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
       fs["Camera_Matrix"] >> camera_matrix;
       fs["Distortion_Coefficients"] >> dist_coefficients;
       fs.release();
-      if (args.undistort) 
+      if (false && args.undistort) 
       {
          undistort(img_1, img_1_undist, camera_matrix, dist_coefficients); // remove camera imperfections
          undistort(img_2, img_2_undist, camera_matrix, dist_coefficients);
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
       if(!img_1_undist.data || !img_2_undist.data) 
       {
          cout << "At least one of the images has no data." << endl;
-         return -1;
+         return 1;
       }
 
       // Feature detection + extraction
@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
       BFMatcher matcher(args.detector == DETECTOR_KAZE ? NORM_HAMMING : NORM_L2, true);
       vector<DMatch> matches;
       matcher.match(descriptors_1, descriptors_2, matches);
+
       chrono::high_resolution_clock::time_point done_matching = chrono::high_resolution_clock::now();
       time_span = chrono::duration_cast<chrono::duration<double>>(done_matching - done_detection);
       cout << "Matching took " << time_span.count() << "seconds." << endl;
@@ -103,10 +104,10 @@ int main(int argc, char *argv[])
 
       Mat mask; // inlier mask
       vector<Point2f> imgpts1_undist, imgpts2_undist;
-      imgpts1_undist = imgpts1;
-      imgpts2_undist = imgpts2;
-      /* undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix); // this doesn't work */
-      /* undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix); */
+      /* imgpts1_undist = imgpts1; */
+      /* imgpts2_undist = imgpts2; */
+      undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix); // this doesn't work
+      undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
       Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
       /* correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist); */
 
@@ -241,7 +242,7 @@ static ostream& operator<<(ostream& os, const CommandArgs& d)
       return os;
 }
 
-#define IS_ARG(vec,param) 0 == strcmp(vec,param) && argc > i + 1
+#define IS_ARG(vec,param) ((0 == strcmp(vec,param)) && (argc > i + 1))
 
 static CommandArgs parse_args(int& argc, char* const* argv)
 {
