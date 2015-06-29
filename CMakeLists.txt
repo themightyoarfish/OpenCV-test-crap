@@ -13,11 +13,13 @@ if(OpenCV_FOUND)
    add_executable(transpTest edgesToPng/transpTest.cpp)
    add_executable(correctImage calibration/correctImage.cpp)
    add_executable(stereo stereo/stereo_v3.cpp)
+   add_executable(triangulate triangulate/triangulate.cpp)
 
    target_link_libraries(cannyDetector ${OpenCV_LIBS})
    target_link_libraries(transpTest ${OpenCV_LIBS})
    target_link_libraries(correctImage ${OpenCV_LIBS})
    target_link_libraries(stereo ${OpenCV_LIBS})
+   target_link_libraries(triangulate ${OpenCV_LIBS})
 endif(OpenCV_FOUND)
 
 #get_cmake_property(_v VARIABLES)

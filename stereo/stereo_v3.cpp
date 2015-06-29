@@ -26,15 +26,8 @@ int main(int argc, char *argv[])
       fs["Camera_Matrix"] >> camera_matrix;
       fs["Distortion_Coefficients"] >> dist_coefficients;
       fs.release();
-      if (false && args.undistort) 
-      {
-         undistort(img_1, img_1_undist, camera_matrix, dist_coefficients); // remove camera imperfections
-         undistort(img_2, img_2_undist, camera_matrix, dist_coefficients);
-      } else
-      {
-         img_1_undist = img_1;
-         img_2_undist = img_2;
-      }
+      img_1_undist = img_1;
+      img_2_undist = img_2;
       if (args.resize_factor > 1) 
       {
          resize(img_1_undist, img_1_undist, Size(img_1_undist.cols / args.resize_factor, 
@@ -59,13 +52,13 @@ int main(int argc, char *argv[])
       Ptr<Feature2D> feat_detector;
       if (args.detector == DETECTOR_KAZE) 
       {
-      feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_MLDB_UPRIGHT : AKAZE::DESCRIPTOR_MLDB, 
-            args.detector_data.descriptor_size,
-            args.detector_data.descriptor_channels,
-            args.detector_data.threshold,
-            args.detector_data.nOctaves,
-            args.detector_data.nOctaveLayersAkaze);
-         
+         feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_MLDB_UPRIGHT : AKAZE::DESCRIPTOR_MLDB, 
+               args.detector_data.descriptor_size,
+               args.detector_data.descriptor_channels,
+               args.detector_data.threshold,
+               args.detector_data.nOctaves,
+               args.detector_data.nOctaveLayersAkaze);
+
       } else {
          feat_detector = xfeatures2d::SURF::create(args.detector_data.minHessian, 
                args.detector_data.nOctaves, args.detector_data.nOctaveLayersAkaze, args.detector_data.extended, args.detector_data.upright);
@@ -82,15 +75,26 @@ int main(int argc, char *argv[])
 
 
       // Find correspondences
-      BFMatcher matcher(args.detector == DETECTOR_KAZE ? NORM_HAMMING : NORM_L2, true);
+      BFMatcher matcher(args.detector == DETECTOR_KAZE ? NORM_HAMMING : NORM_L2, false);
       vector<DMatch> matches;
-      matcher.match(descriptors_1, descriptors_2, matches);
+
+      vector<vector<DMatch>> match_candidates;
+      const float ratio = .8; // Lowe
+      matcher.knnMatch(descriptors_1, descriptors_2, match_candidates, 2);
+      for (int i = 0; i < match_candidates.size(); i++)
+      {
+         if (match_candidates[i][0].distance < ratio * match_candidates[i][1].distance)
+         {
+            matches.push_back(match_candidates[i][0]);
+         }
+      }
+
 
       chrono::high_resolution_clock::time_point done_matching = chrono::high_resolution_clock::now();
       time_span = chrono::duration_cast<chrono::duration<double>>(done_matching - done_detection);
       cout << "Matching took " << time_span.count() << "seconds." << endl;
       time_span = chrono::duration_cast<chrono::duration<double>>(done_matching - start);
-      cout << "Complete procedure took " << time_span.count() << " seconds for " << KeyPoints_1.size() + KeyPoints_2.size() << " total keypoints" << endl;
+      cout << "Complete procedure took " << time_span.count() << " seconds for " << KeyPoints_1.size() + KeyPoints_2.size() << " total keypoints" << " (" << matches.size() << " used)" << endl;
 
 
       // Convert correspondences to vectors
@@ -106,8 +110,15 @@ int main(int argc, char *argv[])
       vector<Point2f> imgpts1_undist, imgpts2_undist;
       /* imgpts1_undist = imgpts1; */
       /* imgpts2_undist = imgpts2; */
-      undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix); // this doesn't work
-      undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
+      if (args.undistort) 
+      {
+         undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
+         undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
+      } else
+      {
+         imgpts1_undist = imgpts1;
+         imgpts2_undist = imgpts2;
+      }
       Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
       /* correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist); */
 
@@ -122,6 +133,31 @@ int main(int argc, char *argv[])
       /* cout << "\ty rotation: " << theta_y * 180 / M_PI << endl; */
       /* cout << "\tz rotation: " << theta_z * 180 / M_PI << endl; */
 
+      Mat pnts3D(1,imgpts1.size(),CV_64FC4);
+      Mat P1 = Mat::eye(3,4,CV_64FC1), P2, zero_t = Mat::zeros(3,1,CV_64FC1);
+      Mat p2[2] = {Mat::eye(3,3,CV_64FC1), -t}; // assume zero rotation until consistent results
+      hconcat(p2, 2, P2);
+      triangulatePoints(P1, P2, imgpts1_undist, imgpts2_undist, pnts3D);
+      double mDist = 0;
+      /* cout << "Triangulated points: " << endl; */
+      int n = 0;
+      for (int i = 0; i < matches.size(); i++) 
+      {
+         float w = pnts3D.at<double>(i,3);
+         float d = pnts3D.at<double>(i,2) / w;
+         if (!isnan(d) && !isinf(d)) 
+         {
+            n++;
+            mDist += d;
+         }
+         /* cout << i << ": (" */ 
+         /* << pnts3D.at<double>(i,0) / w << "," */ 
+         /* << pnts3D.at<double>(i,1) / w << "," */ 
+         /* << pnts3D.at<double>(i,2) / w << "," */ 
+         /* << ")" << endl; */
+      }
+      mDist /=  n;
+      cout << "Mean distance of " << n << " points to camera: " << mDist << endl;
 
       Mat mtxR, mtxQ;
       Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
@@ -139,13 +175,13 @@ int main(int argc, char *argv[])
          drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist);
       }
 
-      Mat img_matches; // side-by-side comparison
-      drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask
-            matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask);
-      // display
-      namedWindow("Matches", CV_WINDOW_NORMAL);
-      imshow("Matches", img_matches);
-      waitKey(0);
+      /* Mat img_matches; // side-by-side comparison */
+      /* drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask */
+      /*       matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask); */
+      /* // display */
+      /* namedWindow("Matches", CV_WINDOW_NORMAL); */
+      /* imshow("Matches", img_matches); */
+      /* waitKey(0); */
 
       return 0;
    } else
@@ -239,7 +275,7 @@ static ostream& operator<<(ostream& os, const CommandArgs& d)
       << "Epilines: " << d.epilines << "\n"
       << "Detector type: " << (d.detector == DETECTOR_SURF ? "SURF" : "KAZE") << "\n"
       << d.detector_data;
-      return os;
+   return os;
 }
 
 #define IS_ARG(vec,param) ((0 == strcmp(vec,param)) && (argc > i + 1))
