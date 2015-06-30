@@ -59,42 +59,41 @@ int main(int argc, const char *argv[])
       /* cout << "Passing check: " << inliers << " points" << endl; */
       /* cout << "Translation [x y z]: " << t.t() << endl; */
 
+      // mask in only those points which were used to compute E
+      vector<Point2f> imgpts1_masked, imgpts2_masked;
+      for (int i = 0; i < imgpts1_undist.size(); i++) 
+      {
+         if (mask.at<uchar>(i,0) == 1) 
+         {
+            imgpts1_masked.push_back(imgpts1_undist[i]);
+            imgpts2_masked.push_back(imgpts2_undist[i]);
+         }
+      }
+
       Mat pnts4D;
       Mat P1 = Mat::eye(3, 4, CV_64FC1), P2;
       Mat p2[2] = { Mat::eye(3, 3, CV_64FC1), t }; // assume zero rotation until consistent results
       hconcat(p2, 2, P2);
       
-      triangulatePoints(P1, P2, imgpts1_undist, imgpts2_undist, pnts4D);
+      triangulatePoints(P1, P2, imgpts1_masked, imgpts2_masked, pnts4D);
       pnts4D = pnts4D.t();
       Mat dehomogenized;
       convertPointsFromHomogeneous(pnts4D, dehomogenized);
-      dehomogenized = dehomogenized.reshape(1);
-      cout << "Rows: " << dehomogenized.rows << "\nCols: " << dehomogenized.cols << "\nChannels: " << dehomogenized.channels() << endl;
-      double mDist = 0;
-      /* cout << "Triangulated points: " << endl; */
+      dehomogenized = dehomogenized.reshape(1); // instead of 3 channels an 1 col, we want 1 channel and 3 cols
+
+      double mDist1 = 0;
       int n = 0;
-      Mat currentRow;
+      Mat_<double> row;
+
       for (int i = 0; i < dehomogenized.rows; i++) 
       {
-          currentRow = dehomogenized.row(i);
-          mDist += currentRow.at<double>(2,0);
-          n++;
-         /* float w = pnts4D.at<double>(i,3); */
-         /* float z = pnts4D.at<double>(i,2) / w; */
-         /* if (!isnan(z) && !isinf(z)) */ 
-         /* { */
-         /*    n++; */
-         /*    mDist += z; */
-            /* cout << "w=" << w << ", z=" << z << endl; */
-         /* } */
-         /* cout << i << ": (" */ 
-         /* << pnts4D.at<double>(i,0) / w << "," */ 
-         /* << pnts4D.at<double>(i,1) / w << "," */ 
-         /* << pnts4D.at<double>(i,2) / w << "," */ 
-         /* << ")" << endl; */
+         row = dehomogenized.row(i);
+         double d = row(2);
+         mDist1 += d;
+         n++;
       }
-      mDist /=  n;
-      cout << "Mean distance of " << n << " points to camera: " << mDist << endl;
+      mDist1 /= n;
+      cout << "Mean distance of " << n << " points to camera: " << mDist1 << " (dehomogenized)" << endl;
    }
    return 0;
 }

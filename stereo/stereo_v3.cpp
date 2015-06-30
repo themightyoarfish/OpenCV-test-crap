@@ -133,31 +133,6 @@ int main(int argc, char *argv[])
       /* cout << "\ty rotation: " << theta_y * 180 / M_PI << endl; */
       /* cout << "\tz rotation: " << theta_z * 180 / M_PI << endl; */
 
-      Mat pnts3D(1,imgpts1.size(),CV_64FC4);
-      Mat P1 = Mat::eye(3,4,CV_64FC1), P2, zero_t = Mat::zeros(3,1,CV_64FC1);
-      Mat p2[2] = {Mat::eye(3,3,CV_64FC1), -t}; // assume zero rotation until consistent results
-      hconcat(p2, 2, P2);
-      triangulatePoints(P1, P2, imgpts1_undist, imgpts2_undist, pnts3D);
-      double mDist = 0;
-      /* cout << "Triangulated points: " << endl; */
-      int n = 0;
-      for (int i = 0; i < matches.size(); i++) 
-      {
-         float w = pnts3D.at<double>(i,3);
-         float d = pnts3D.at<double>(i,2) / w;
-         if (!isnan(d) && !isinf(d)) 
-         {
-            n++;
-            mDist += d;
-         }
-         /* cout << i << ": (" */ 
-         /* << pnts3D.at<double>(i,0) / w << "," */ 
-         /* << pnts3D.at<double>(i,1) / w << "," */ 
-         /* << pnts3D.at<double>(i,2) / w << "," */ 
-         /* << ")" << endl; */
-      }
-      mDist /=  n;
-      cout << "Mean distance of " << n << " points to camera: " << mDist << endl;
 
       Mat mtxR, mtxQ;
       Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
