@@ -59,7 +59,12 @@ int main(int argc, char *argv[])
          Mat descriptors_1, descriptors_2;
 
          Ptr<Feature2D> feat_detector;
-         feat_detector = AKAZE::create();
+         feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_MLDB_UPRIGHT : AKAZE::DESCRIPTOR_MLDB, 
+               args.detector_data.descriptor_size,
+               args.detector_data.descriptor_channels,
+               args.detector_data.threshold,
+               args.detector_data.nOctaves,
+               args.detector_data.nOctaveLayersAkaze);
          feat_detector->detectAndCompute(img_1, noArray(), KeyPoints_1, descriptors_1);
          feat_detector->detectAndCompute(img_2, noArray(), KeyPoints_2, descriptors_2);
 
@@ -132,10 +137,12 @@ int main(int argc, char *argv[])
             row = dehomogenized.row(i);
             double d = row(2);
             if (d > 0) 
+            {
                pos++;
+               mDist1 += d;
+               n++;
+            }
             else neg++;
-            mDist1 += d;
-            n++;
          }
          mDist1 /= n;
          cout << "Mean distance of " << n << " points to camera: " << mDist1 << " (dehomogenized)" << endl;
