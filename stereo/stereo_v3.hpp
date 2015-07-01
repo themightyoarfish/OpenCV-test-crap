@@ -2,6 +2,10 @@
  * @file OCV3 compliant version of stereo_v2.cpp
  * @author Rasmus Diederichsen
  */
+#ifndef STEREO_V3_H
+
+#define STEREO_V3_H
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
@@ -43,9 +47,10 @@ typedef struct
 
 } CommandArgs;
 
-static void drawEpilines(const Mat& image_points, int whichImage, Mat& F, Mat& canvas);
-static double computeReprojectionError(vector<Point2f>& img1pts, vector<Point2f>& img2pts, Mat& inlier_mask, const Mat& F);
-static ostream& operator<<(ostream& os, const DetectorData& d);
-static ostream& operator<<(ostream& os, const CommandArgs& d);
-static CommandArgs parse_args(int& argc, char* const* argv);
+void drawEpilines(const Mat& image_points, int whichImage, Mat& F, Mat& canvas);
+double computeReprojectionError(vector<Point2f>& img1pts, vector<Point2f>& img2pts, Mat& inlier_mask, const Mat& F);
+ostream& operator<<(ostream& os, const DetectorData& d);
+ostream& operator<<(ostream& os, const CommandArgs& d);
+CommandArgs parse_args(int& argc, char* const* argv);
 
+#endif /* end of include guard: STEREO_V3_H */

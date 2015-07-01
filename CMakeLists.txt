@@ -7,13 +7,13 @@ find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # ma
 
 if(OpenCV_FOUND)
    include_directories(${OpenCV_INCLUDE_DIRS})
-   include_directories("stereo/")
+   include_directories("stereo")
 
    add_executable(cannyDetector canny/canny.cpp)
    add_executable(transpTest edgesToPng/transpTest.cpp)
    add_executable(correctImage calibration/correctImage.cpp)
-   add_executable(stereo stereo/stereo_v3.cpp)
-   add_executable(triangulate triangulate/triangulate.cpp)
+   add_executable(stereo stereo/stereo_v3_main.cpp stereo/stereo_v3.cpp)
+   add_executable(triangulate triangulate/triangulate.cpp stereo/stereo_v3.cpp)
 
    target_link_libraries(cannyDetector ${OpenCV_LIBS})
    target_link_libraries(transpTest ${OpenCV_LIBS})
