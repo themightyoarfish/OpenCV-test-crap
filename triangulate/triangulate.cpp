@@ -3,31 +3,22 @@
 using namespace std;
 using namespace cv;
 
-static int length_filenames1 = 4;
-static char* filenames1[] = {
-   "/Users/Rasmus/Desktop/Set1/1.jpg",
-   "/Users/Rasmus/Desktop/Set1/2.jpg",
-   "/Users/Rasmus/Desktop/Set1/3.jpg",
-   "/Users/Rasmus/Desktop/Set1/4.jpg"
+static int length_filenames = 4;
+static char* filenames[] = {
+   "/Users/Rasmus/Desktop/Set3/1.jpg",
+   "/Users/Rasmus/Desktop/Set3/2.jpg",
+   "/Users/Rasmus/Desktop/Set3/3.jpg",
+   "/Users/Rasmus/Desktop/Set3/4.jpg"
 };
-
-static int length_filenames2 = 4;
-static char* filenames2[] = {
-   "/Users/Rasmus/Desktop/Set2/1.jpg",
-   "/Users/Rasmus/Desktop/Set2/2.jpg",
-   "/Users/Rasmus/Desktop/Set2/3.jpg",
-   "/Users/Rasmus/Desktop/Set2/4.jpg",
-};
-
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc,argv);
 
-   for (int i = 1; i < length_filenames1; i++) 
+   for (int i = 1; i < length_filenames; i++) 
    {
-      cout << "comparing images " << filenames1[0] << " and " << filenames1[i] << endl;
-      Mat img_1 = imread(filenames1[0], IMREAD_COLOR);
-      Mat img_2 = imread(filenames1[i], IMREAD_COLOR);
+      cout << "comparing images " << filenames[0] << " and " << filenames[i] << endl;
+      Mat img_1 = imread(filenames[0], IMREAD_COLOR);
+      Mat img_2 = imread(filenames[i], IMREAD_COLOR);
 
       if (!img_1.data || !img_2.data) 
       {

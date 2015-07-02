@@ -117,18 +117,18 @@ int main(int argc, char *argv[])
       /* imgpts2_undist = imgpts2; */
       if (args.undistort) 
       {
-         undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
-         undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients,noArray(),camera_matrix);
+         undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients, noArray(), camera_matrix);
+         undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients, noArray(), camera_matrix);
       } else
       {
          imgpts1_undist = imgpts1;
          imgpts2_undist = imgpts2;
       }
       Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
-      /* correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist); */
+      correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist);
 
       Mat R, t; // rotation and translation
-      cout << "Pose recovery inliers: " << recoverPose(E, imgpts1_undist, imgpts2_undist, R, t) << endl;
+      cout << "Pose recovery inliers: " << recoverPose(E, imgpts1_undist, imgpts2_undist, R, t, 1.0, Point2d(0,0), mask) << endl;
 
       /* double theta_x, theta_y, theta_z; */
       /* theta_x = atan2(R.at<double>(2,1),  R.at<double>(2,2)); */
