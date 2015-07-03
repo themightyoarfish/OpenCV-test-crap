@@ -18,34 +18,47 @@ int main(int argc, char *argv[])
          "[--epilines] [--no-undistort]" << endl;
       return -1;
    }
-   Mat img_1 = imread(args.left_image_name, IMREAD_COLOR);
-   Mat img_2 = imread(args.right_image_name, IMREAD_COLOR);
+   Mat img1 = imread(args.left_image_name, IMREAD_COLOR);
+   Mat img2 = imread(args.right_image_name, IMREAD_COLOR);
+
+   if(!img1.data || !img2.data) 
+   {
+      cout << "At least one of the images has no data." << endl;
+      return 1;
+   }
 
    FileStorage fs(args.calib_file_name, FileStorage::READ);
    if (fs.isOpened())
    {
-      Mat camera_matrix, dist_coefficients, img_1_undist, img_2_undist;
+      Mat camera_matrix, dist_coefficients;
       fs["Camera_Matrix"] >> camera_matrix;
       fs["Distortion_Coefficients"] >> dist_coefficients;
       fs.release();
-      img_1_undist = img_1;
-      img_2_undist = img_2;
       if (args.resize_factor > 1) 
       {
-         resize(img_1_undist, img_1_undist, Size(img_1_undist.cols / args.resize_factor, 
-                  img_1_undist.rows / args.resize_factor)); // make smaller for performance and displayablity
-         resize(img_2_undist, img_2_undist, Size(img_2_undist.cols / args.resize_factor,
-                  img_2_undist.rows / args.resize_factor));
+         resize(img1, img1, Size(img1.cols / args.resize_factor, 
+                  img1.rows / args.resize_factor)); // make smaller for performance and displayablity
+         resize(img2, img2, Size(img2.cols / args.resize_factor,
+                  img2.rows / args.resize_factor));
          // scale matrix down according to changed resolution
          camera_matrix = camera_matrix / args.resize_factor;
          camera_matrix.at<double>(2,2) = 1;
       }
 
-      if(!img_1_undist.data || !img_2_undist.data) 
+      Mat K1, K2;
+      K1 = K2 = camera_matrix;
+      if (img1.rows > img1.cols) // it is assumed the camera has been calibrated in landscape mode, so undistortion must also be performed in landscape orientation, or the camera matrix must be modified (fx,fy and cx,cy need to be exchanged)
       {
-         cout << "At least one of the images has no data." << endl;
-         return 1;
+         swap(K1.at<double>(0,0), K1.at<double>(1,1));
+         swap(K1.at<double>(0,2), K1.at<double>(1,2));
       }
+      if (img2.rows > img2.cols)
+      {
+         swap(K2.at<double>(0,0), K2.at<double>(1,1));
+         swap(K2.at<double>(0,2), K2.at<double>(1,2));
+      }
+
+
 
       // Feature detection + extraction
       vector<KeyPoint> KeyPoints_1, KeyPoints_2;
@@ -61,7 +74,8 @@ int main(int argc, char *argv[])
                args.detector_data.nOctaves,
                args.detector_data.nOctaveLayersAkaze);
 
-      } else {
+      } else 
+      {
          feat_detector = xfeatures2d::SURF::create(args.detector_data.minHessian, 
                args.detector_data.nOctaves, args.detector_data.nOctaveLayersAkaze, args.detector_data.extended, args.detector_data.upright);
       }
@@ -70,8 +84,8 @@ int main(int argc, char *argv[])
       chrono::high_resolution_clock::time_point start = chrono::high_resolution_clock::now();
 #endif
 
-      feat_detector->detectAndCompute(img_1_undist, noArray(), KeyPoints_1, descriptors_1);
-      feat_detector->detectAndCompute(img_2_undist, noArray(), KeyPoints_2, descriptors_2);
+      feat_detector->detectAndCompute(img1, noArray(), KeyPoints_1, descriptors_1);
+      feat_detector->detectAndCompute(img2, noArray(), KeyPoints_2, descriptors_2);
 
 #ifdef TIME
       chrono::high_resolution_clock::time_point done_detection = chrono::high_resolution_clock::now();
@@ -102,9 +116,15 @@ int main(int argc, char *argv[])
       cout << "Complete procedure took " << time_span.count() << " seconds for " << KeyPoints_1.size() + KeyPoints_2.size() << " total keypoints" << " (" << matches.size() << " used)" << endl;
 #endif
 
+      cout << "Total number of matches " << matches.size() << endl;
+      cout << "img1.size (cols,rows)=" << "(" << img1.cols << "," << img1.rows << ")" << endl;
+      cout << "img2.size (cols,rows)=" << "(" << img2.cols << "," << img2.rows << ")" << endl;
+      cout << "keypoints1 size=" << KeyPoints_1.size() << endl;
+      cout << "keypoints2 size=" << KeyPoints_2.size() << endl;
+
       // Convert correspondences to vectors
       vector<Point2f>imgpts1,imgpts2;
-      cout << "Number of matches " << matches.size() << endl;
+
       for(unsigned int i = 0; i < matches.size(); i++) 
       {
          imgpts1.push_back(KeyPoints_1[matches[i].queryIdx].pt); 
@@ -113,22 +133,16 @@ int main(int argc, char *argv[])
 
       Mat mask; // inlier mask
       vector<Point2f> imgpts1_undist, imgpts2_undist;
-      /* imgpts1_undist = imgpts1; */
-      /* imgpts2_undist = imgpts2; */
       if (args.undistort) 
       {
-         undistortPoints(imgpts1, imgpts1_undist, camera_matrix, dist_coefficients, noArray(), camera_matrix);
-         undistortPoints(imgpts2, imgpts2_undist, camera_matrix, dist_coefficients, noArray(), camera_matrix);
-      } else
-      {
-         imgpts1_undist = imgpts1;
-         imgpts2_undist = imgpts2;
-      }
-      Mat E = findEssentialMat(imgpts1_undist, imgpts2_undist, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
-      correctMatches(E, imgpts1_undist, imgpts2_undist, imgpts1_undist, imgpts2_undist);
+         undistortPoints(imgpts1, imgpts1, K1, dist_coefficients, noArray(), K1);
+         undistortPoints(imgpts2, imgpts2, K2, dist_coefficients, noArray(), K2);
+      } 
+      Mat E = findEssentialMat(imgpts1, imgpts2, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
+      correctMatches(E, imgpts1, imgpts2, imgpts1, imgpts2);
 
       Mat R, t; // rotation and translation
-      cout << "Pose recovery inliers: " << recoverPose(E, imgpts1_undist, imgpts2_undist, R, t, 1.0, Point2d(0,0), mask) << endl;
+      cout << "Pose recovery inliers: " << recoverPose(E, imgpts1, imgpts2, R, t, 1.0, Point2d(0,0), mask) << endl;
 
       /* double theta_x, theta_y, theta_z; */
       /* theta_x = atan2(R.at<double>(2,1),  R.at<double>(2,2)); */
@@ -147,16 +161,16 @@ int main(int argc, char *argv[])
 
       cout << "Translation [x y z]: " << t.t() << endl;
 
-      double err = computeReprojectionError(imgpts1_undist, imgpts2_undist, mask, E);
+      double err = computeReprojectionError(imgpts1, imgpts2, mask, E);
       cout << "average reprojection err = " <<  err << endl;
       if (args.epilines)
       {
-         drawEpilines(Mat(imgpts1_undist), 1, E, img_2_undist);
-         drawEpilines(Mat(imgpts2_undist), 2, E, img_1_undist);
+         drawEpilines(Mat(imgpts1), 1, E, img2);
+         drawEpilines(Mat(imgpts2), 2, E, img1);
       }
 
       Mat img_matches; // side-by-side comparison
-      drawMatches(img_1_undist, KeyPoints_1, img_2_undist, KeyPoints_2, // draw only inliers given by mask
+      drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, // draw only inliers given by mask
             matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask);
       // display
       namedWindow("Matches", CV_WINDOW_NORMAL);

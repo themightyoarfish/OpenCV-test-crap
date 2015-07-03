@@ -5,10 +5,10 @@ using namespace cv;
 
 static int length_filenames = 4;
 static char* filenames[] = {
-   "/Users/Rasmus/Desktop/Set3/1.jpg",
-   "/Users/Rasmus/Desktop/Set3/2.jpg",
-   "/Users/Rasmus/Desktop/Set3/3.jpg",
-   "/Users/Rasmus/Desktop/Set3/4.jpg"
+   "/Users/Rasmus/Desktop/Set1/1.jpg",
+   "/Users/Rasmus/Desktop/Set1/2.jpg",
+   "/Users/Rasmus/Desktop/Set1/3.jpg",
+   "/Users/Rasmus/Desktop/Set1/4.jpg"
 };
 int main(int argc, char *argv[])
 {
