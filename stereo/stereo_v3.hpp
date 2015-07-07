@@ -52,5 +52,6 @@ double computeReprojectionError(vector<Point2f>& img1pts, vector<Point2f>& img2p
 ostream& operator<<(ostream& os, const DetectorData& d);
 ostream& operator<<(ostream& os, const CommandArgs& d);
 CommandArgs parse_args(int& argc, char* const* argv);
+void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat camera_matrix, Mat& dist_coefficients, double& worldScale, Mat& R, Mat& t, Mat& img_matches);
 
 #endif /* end of include guard: STEREO_V3_H */

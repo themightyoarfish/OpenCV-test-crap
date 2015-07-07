@@ -1,12 +1,16 @@
-#include <opencv2/xfeatures2d/nonfree.hpp>
-#include <cmath>
-
-#ifdef TIME
-#include <chrono>
-#endif
-
+#include <opencv2/opencv.hpp>
 #include "stereo_v3.hpp"
+#include <string>
 
+using namespace std;
+using namespace cv;
+
+static vector<string> series = {
+   "/Users/Rasmus/Desktop/Set1/1.jpg",
+   "/Users/Rasmus/Desktop/Set1/2.jpg",
+   "/Users/Rasmus/Desktop/Set1/3.jpg",
+   "/Users/Rasmus/Desktop/Set1/4.jpg",
+};
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc, argv);
@@ -18,14 +22,11 @@ int main(int argc, char *argv[])
          "[--epilines] [--no-undistort]" << endl;
       return -1;
    }
-   Mat img1 = imread(args.left_image_name, IMREAD_GRAYSCALE);
-   Mat img2 = imread(args.right_image_name, IMREAD_GRAYSCALE);
+   Mat firstFrame, secondFrame, reference, currentFrame;
+   Mat tFirstRef, RFirstRef, tFirstCurrent, RFirstCurrent;
 
-   if(!img1.data || !img2.data) 
-   {
-      cout << "At least one of the images has no data." << endl;
-      return 1;
-   }
+   firstFrame = imread(series.back()), secondFrame = imread(series.front());
+   reference = secondFrame;
 
    FileStorage fs(args.calib_file_name, FileStorage::READ);
    if (fs.isOpened())
@@ -34,18 +35,6 @@ int main(int argc, char *argv[])
       fs["Camera_Matrix"] >> camera_matrix;
       fs["Distortion_Coefficients"] >> dist_coefficients;
       fs.release();
-
-      Mat img_matches, R, t;
-      double worldScale;
-      computePoseDifference(img1, img2, args, camera_matrix, dist_coefficients, worldScale, R, t, img_matches);
-      namedWindow("Matches", CV_WINDOW_NORMAL);
-      imshow("Matches", img_matches);
-      waitKey(0);
-
-      return 0;
-   } else
-   {
-      cout << "Could not read file " << args.calib_file_name << endl;
-      return -1;
    }
+   return 0;
 }
