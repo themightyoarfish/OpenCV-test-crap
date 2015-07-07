@@ -6,9 +6,10 @@
 using namespace cv;
 using namespace std;
 
-void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat camera_matrix, Mat& dist_coefficients, double& worldScale, Mat& R, Mat& t, Mat& img_matches)
+void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dist_coefficients, double& worldScale, Mat& R, Mat& t, Mat& img_matches)
 {
    cout << "%===============================================%" << endl;
+   Mat camera_matrix = k.clone();
    if (args.resize_factor > 1) 
    {
       resize(img1, img1, Size(img1.cols / args.resize_factor, 
