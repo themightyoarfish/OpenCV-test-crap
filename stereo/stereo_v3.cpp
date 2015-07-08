@@ -1,5 +1,9 @@
 #include <opencv2/xfeatures2d/nonfree.hpp>
 #include <cmath>
+#include <fstream>
+#include <iostream>
+#include "Common.h"
+#include "Triangulation.h"
 
 #include "stereo_v3.hpp"
 
@@ -55,24 +59,35 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    feat_detector->detectAndCompute(img1, noArray(), KeyPoints_1, descriptors_1);
    feat_detector->detectAndCompute(img2, noArray(), KeyPoints_2, descriptors_2);
 
-   // Find correspondences
-   /* BFMatcher matcher(NORM_HAMMING, true); */
-   BFMatcher matcher(NORM_HAMMING, false);
-   vector<DMatch> matches;
+   cout << "Number of feature points (img1, img2): " << "(" << KeyPoints_1.size() << ", " << KeyPoints_2.size() << ")" << endl;
 
-   /* matcher.match(descriptors_1, descriptors_2, matches); */
-   vector<vector<DMatch>> match_candidates;
-   const float ratio = .9; // Lowe
-   matcher.knnMatch(descriptors_1, descriptors_2, match_candidates, 2);
-   for (int i = 0; i < match_candidates.size(); i++)
+   // Find correspondences
+   BFMatcher matcher;
+   vector<DMatch> matches;
+   if (args.use_ratio_test) 
    {
-      if (match_candidates[i][0].distance < ratio * match_candidates[i][1].distance)
-      {
-         matches.push_back(match_candidates[i][0]);
-      }
+      if (args.detector == DETECTOR_KAZE) 
+         matcher = BFMatcher(NORM_HAMMING, false);
+      else matcher = BFMatcher(NORM_L2, false);
+
+      vector<vector<DMatch>> match_candidates;
+      const float ratio = args.ratio;
+      matcher.knnMatch(descriptors_1, descriptors_2, match_candidates, 2);
+      for (int i = 0; i < match_candidates.size(); i++)
+         if (match_candidates[i][0].distance < ratio * match_candidates[i][1].distance)
+            matches.push_back(match_candidates[i][0]);
+
+      cout << "Number of matches passing ratio test: " << matches.size() << endl;
+
+   } else
+   {
+      if (args.detector == DETECTOR_KAZE) 
+         matcher = BFMatcher(NORM_HAMMING, true);
+      else matcher = BFMatcher(NORM_L2, true);
+      matcher.match(descriptors_1, descriptors_2, matches);
    }
 
-   cout << "Number of matches passing check: " << matches.size() << endl;
+   cout << "Number of matching feature points: " << matches.size() << endl;
 
    // Convert correspondences to vectors
    vector<Point2f>imgpts1,imgpts2;
@@ -126,20 +141,53 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
 
    Mat pnts4D;
    Mat P1 = Mat::eye(3, 4, CV_64FC1), P2;
-   Mat p2[2] = { Mat::eye(3, 3, CV_64FC1), t }; // assume zero rotation until consistent results
+   Mat p2[2] = { R, t }; 
    hconcat(p2, 2, P2);
+#ifndef USE_OPENCV_TRIANGULATION // strangely, both methods yield identical results
+   vector<Point3d> homogPoints1, homogPoints2;
+   for (int i = 0; i < imgpts1_masked.size(); i++) 
+   {
+      Point2f currentPoint1 = imgpts1_masked[i];
+      homogPoints1.push_back(Point3d(currentPoint1.x, currentPoint1.y, 1));
+      Point2f currentPoint2 = imgpts2_masked[i];
+      homogPoints2.push_back(Point3d(currentPoint2.x, currentPoint2.y, 1));
+   }
 
+   Mat dehomogenized(imgpts1_masked.size(), 3, CV_64FC1);
+   for (int i = 0; i < imgpts1_masked.size(); i++) 
+   {
+      Mat_<double> triangulatedPoint = IterativeLinearLSTriangulation(homogPoints1[i], P1, homogPoints2[i], P2);
+      Mat r = triangulatedPoint.t();
+      r.colRange(0,3).copyTo(dehomogenized.row(i)); // directly assigning to dehomogenized.row(i) compiles but does nothing, wtf?
+   }
+#else
    triangulatePoints(P1, P2, imgpts1_masked, imgpts2_masked, pnts4D);
    pnts4D = pnts4D.t();
    Mat dehomogenized;
    convertPointsFromHomogeneous(pnts4D, dehomogenized);
    dehomogenized = dehomogenized.reshape(1); // instead of 3 channels and 1 col, we want 1 channel and 3 cols
+#endif
 
-   double mDist1 = 0;
+
+   double mDist = 0;
    int n = 0;
    int pos = 0, neg = 0;
-   Mat_<double> row;
 
+   /* Write ply file header */
+   ofstream ply_file("points.ply", ios_base::trunc);
+   ply_file << 
+      "ply\n"
+      "format ascii 1.0\n"
+      "element vertex " << dehomogenized.rows << "\n"
+      "property float x\n"
+      "property float y\n"
+      "property float z\n"
+      "property uchar red\n"
+      "property uchar green\n"
+      "property uchar blue\n"
+      "end_header" << endl;
+
+   Mat_<double> row;
    for (int i = 0; i < dehomogenized.rows; i++) 
    {
       row = dehomogenized.row(i);
@@ -147,15 +195,22 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
       if (d > 0) 
       {
          pos++;
-         mDist1 += d;
+         mDist += d;
          n++;
+         Vec3b rgb = img1.at<Vec3b>(imgpts1_masked[i].x, imgpts1_masked[i].y);
+         ply_file << row(0) << " " << row(1) << " " << row(2) << " " << (int)rgb[2] << " " << (int)rgb[1] << " " << (int)rgb[0] << "\n";
+      } else
+      {
+         neg++;
+         ply_file << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << "\n"; 
       }
-      else neg++;
    }
-   mDist1 /= n;
-   worldScale = mDist1;
-   cout << "Mean distance of " << n << " points to camera: " << mDist1 << " (dehomogenized)" << endl;
+   ply_file.close();
+   mDist /= n;
+   worldScale = mDist;
+   cout << "Mean distance of " << n << " points to camera: " << mDist << " (dehomogenized)" << endl;
    cout << "pos=" << pos << ", neg=" << neg << endl;
+
 
    /* char filename[100]; */
    /* sprintf(filename, "mat_1%d", i+1); */
@@ -164,6 +219,43 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    /* Ptr<Formatted> formatted = formatter->format(dehomogenized); */
    /* ofstream file(filename, ios_base::trunc); */
    /* file << formatted << endl; */
+
+   /* Removed until cmake has been fathomed */
+   /* vector< Point3d > points3D; */
+   /* vector< vector< Point2d > > pointsImg; */
+   /* int NPOINTS=dehomogenized.rows; // number of 3d points */
+   /* int NCAMS=2; // number of cameras */
+
+   /* points3D.resize(NPOINTS); */
+   /* for (int i = 0; i < NPOINTS; i++) */ 
+   /* { */
+   /*    points3D[i] = Point3d(dehomogenized.at<double>(i,0), */
+   /*          dehomogenized.at<double>(i,1), */
+   /*          dehomogenized.at<double>(i,2) */
+   /*          ); */
+   /* } */
+   /* // fill image projections */
+   /* vector<vector<int> > visibility(2, vector<int>(NPOINTS, 1)); */
+   /* vector<Mat> camera_matrices(2, camera_matrix); */
+   /* vector<Mat> Rs(2); */
+   /* Rodrigues(Mat::eye(3, 3, CV_64FC1), Rs[0]); */
+   /* Rodrigues(R, Rs[0]); */
+   /* vector<Mat> Ts = { Mat::zeros(3,1, CV_64FC1), t }; */
+   /* vector<Mat> dist_coefficientss(2, dist_coefficients); */
+
+   /* pointsImg.resize(NCAMS); */
+   /* for(int i=0; i<NCAMS; i++) pointsImg[i].resize(NPOINTS); */
+   /* for (int i = 0; i < NPOINTS; i++) */ 
+   /* { */
+   /*    pointsImg[0][i] = Point2d(imgpts1_masked[i].x, imgpts1_masked[i].y); */
+   /*    pointsImg[1][i] = Point2d(imgpts2_masked[i].x, imgpts2_masked[i].y); */
+   /* } */
+   /*  cvsba::Sba sba; */
+   /*   sba.run(points3D, pointsImg, visibility, camera_matrices, Rs, Ts, dist_coefficientss); */
+
+   /*   cout<<"Initial error="<<sba.getInitialReprjError()<<". "<< */
+   /*              "Final error="<<sba.getFinalReprjError()<<endl; */
+
    cout << "%===============================================%" << endl;
 }
 
@@ -263,6 +355,14 @@ CommandArgs parse_args(int& argc, char* const* argv)
       if (IS_ARG(argv[i], "--left")) 
       {
          args.left_image_name = argv[++i];
+      }
+      else if (0 == strcmp(argv[i], "--ratioTest"))
+      {
+         args.use_ratio_test = true;
+      }
+      else if (IS_ARG(argv[i], "--ratio"))
+      {
+         args.ratio = atof(argv[++i]);
       }
       else if (IS_ARG(argv[i], "--right")) 
       {

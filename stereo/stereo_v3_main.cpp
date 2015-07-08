@@ -18,8 +18,8 @@ int main(int argc, char *argv[])
          "[--epilines] [--no-undistort]" << endl;
       return -1;
    }
-   Mat img1 = imread(args.left_image_name, IMREAD_GRAYSCALE);
-   Mat img2 = imread(args.right_image_name, IMREAD_GRAYSCALE);
+   Mat img1 = imread(args.left_image_name, IMREAD_COLOR);
+   Mat img2 = imread(args.right_image_name, IMREAD_COLOR);
 
    if(!img1.data || !img2.data) 
    {

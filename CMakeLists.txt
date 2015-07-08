@@ -4,17 +4,19 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -w")
 set(CMAKE_CXX_FLAGS "-lstdc++ -std=c++11")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wreturn-type")
 find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # manual specification of the OpenCVConfig.cmake path is necessary since otherwise, cmake assigns /opt/local a higher priority and ocv2.4 will be used
+find_package(cvsba REQUIRED)
 
 if(OpenCV_FOUND)
    include_directories(${OpenCV_INCLUDE_DIRS})
    include_directories("stereo")
+   include_directories("triangulate")
 
    add_executable(cannyDetector canny/canny.cpp)
    add_executable(transpTest edgesToPng/transpTest.cpp)
    add_executable(correctImage calibration/correctImage.cpp)
-   add_executable(stereo stereo/stereo_v3_main.cpp stereo/stereo_v3.cpp)
-   add_executable(triangulate triangulate/triangulate.cpp stereo/stereo_v3.cpp)
-   add_executable(scale_degeneration_test stereo/scale_degeneration_test.cpp stereo/stereo_v3.cpp)
+   add_executable(stereo stereo/stereo_v3_main.cpp stereo/stereo_v3.cpp triangulate/Triangulation.cpp)
+   add_executable(triangulate triangulate/triangulate.cpp stereo/stereo_v3.cpp triangulate/Triangulation.cpp)
+   add_executable(scale_degeneration_test stereo/scale_degeneration_test.cpp stereo/stereo_v3.cpp triangulate/Triangulation.cpp)
 
    target_link_libraries(cannyDetector ${OpenCV_LIBS})
    target_link_libraries(transpTest ${OpenCV_LIBS})

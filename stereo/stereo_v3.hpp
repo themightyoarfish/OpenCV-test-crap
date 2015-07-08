@@ -33,6 +33,8 @@ typedef struct
    char* left_image_name = "n/a";
    char* right_image_name = "n/a";
    char* calib_file_name = "n/a";
+   bool use_ratio_test = false;
+   float ratio = 0.8;
    int resize_factor = 1;
    bool undistort = true;
    bool epilines = false;
