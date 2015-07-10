@@ -5,12 +5,15 @@
 using namespace std;
 using namespace cv;
 
-static int length_filenames = 4;
+static int length_filenames = 7;
 static char* filenames[] = {
-   "/Users/Rasmus/Desktop/Set2/1.jpg",
-   "/Users/Rasmus/Desktop/Set2/2.jpg",
-   "/Users/Rasmus/Desktop/Set2/3.jpg",
-   "/Users/Rasmus/Desktop/Set2/4.jpg",
+   "/Users/Rasmus/Desktop/Set6/1.jpg",
+   "/Users/Rasmus/Desktop/Set6/2.jpg",
+   "/Users/Rasmus/Desktop/Set6/3.jpg",
+   "/Users/Rasmus/Desktop/Set6/4.jpg",
+   "/Users/Rasmus/Desktop/Set6/5.jpg",
+   "/Users/Rasmus/Desktop/Set6/6.jpg",
+   "/Users/Rasmus/Desktop/Set6/7.jpg",
 };
 int main(int argc, char *argv[])
 {

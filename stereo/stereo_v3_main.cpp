@@ -38,10 +38,12 @@ int main(int argc, char *argv[])
       Mat img_matches, R, t;
       double worldScale;
       computePoseDifference(img1, img2, args, camera_matrix, dist_coefficients, worldScale, R, t, img_matches);
-      namedWindow("Matches", CV_WINDOW_NORMAL);
-      imshow("Matches", img_matches);
-      waitKey(0);
-
+      if (args.draw_matches) 
+      {
+         namedWindow("Matches", CV_WINDOW_NORMAL);
+         imshow("Matches", img_matches);
+         waitKey(0);
+      }
       return 0;
    } else
    {

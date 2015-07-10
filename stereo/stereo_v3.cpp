@@ -101,19 +101,25 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    Mat mask; // inlier mask
    if (args.undistort) 
    {
-      undistortPoints(imgpts1, imgpts1, K1, dist_coefficients, noArray(), K1);
-      undistortPoints(imgpts2, imgpts2, K2, dist_coefficients, noArray(), K2);
+      undistortPoints(imgpts1, imgpts1, K1, dist_coefficients);
+      undistortPoints(imgpts2, imgpts2, K2, dist_coefficients);
    } 
 
    /* Why not use these? */
-   /* double focal = camera_matrix.at<double>(0,0); */
-   /* Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2)); */
+   double focal = camera_matrix.at<double>(0,0);
+   Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
-   Mat E = findEssentialMat(imgpts1, imgpts2, 1, Point2d(0,0), RANSAC, 0.999, 8, mask);
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 3, mask);
    correctMatches(E, imgpts1, imgpts2, imgpts1, imgpts2);
-   recoverPose(E, imgpts1, imgpts2, R, t, 1.0, Point2d(0,0), mask);
+   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
-   cout << "Matches used for pose recovery: " << countNonZero(mask) << endl;
+   cout << "Matches used for pose recovery: " << inliers << endl;
+   
+   /* Mat R1, R2, ProjMat1, ProjMat2, Q; */
+   /* stereoRectify(camera_matrix, dist_coefficients, camera_matrix, dist_coefficients, img1.size(), R, t, R1, R2, ProjMat1, ProjMat2, Q); */
+   /* cout << "P1=" << ProjMat1 << endl; */
+   /* cout << "P2=" << ProjMat2 << endl; */
+   /* cout << "Q=" << Q << endl; */
 
    Mat mtxR, mtxQ;
    Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
@@ -140,9 +146,11 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    }
 
    Mat pnts4D;
-   Mat P1 = Mat::eye(3, 4, CV_64FC1), P2;
+   Mat P1 = camera_matrix * Mat::eye(3, 4, CV_64FC1), P2;
    Mat p2[2] = { R, t }; 
    hconcat(p2, 2, P2);
+   P2 = camera_matrix * P2;
+   
 #ifndef USE_OPENCV_TRIANGULATION // strangely, both methods yield identical results
    vector<Point3d> homogPoints1, homogPoints2;
    for (int i = 0; i < imgpts1_masked.size(); i++) 
@@ -266,7 +274,7 @@ void drawEpilines(const Mat& image_points, int whichImage, Mat& F, Mat& canvas)
    vector<Vec3f> lines1;
    computeCorrespondEpilines(
          image_points, // image points
-         1, // in image 1 (can also be 2)
+         whichImage, // in image 1
          F, // F matrix
          lines1); // vector of epipolar lines
    // for all epipolar lines
@@ -355,6 +363,10 @@ CommandArgs parse_args(int& argc, char* const* argv)
       if (IS_ARG(argv[i], "--left")) 
       {
          args.left_image_name = argv[++i];
+      }
+      else if (0 == strcmp(argv[i], "--draw-matches"))
+      {
+         args.draw_matches = true;
       }
       else if (0 == strcmp(argv[i], "--ratioTest"))
       {
