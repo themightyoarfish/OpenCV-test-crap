@@ -6,8 +6,8 @@ using namespace std;
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc, argv);
-   Mat img1 = imread("/Users/Rasmus/Desktop/AUTO1.JPG", IMREAD_COLOR);
-   Mat img2 = imread("/Users/Rasmus/Desktop/AUTO2.JPG", IMREAD_COLOR);
+   Mat img1 = imread("../Data/Outdoor Samples/AUTO1.JPG", IMREAD_COLOR);
+   Mat img2 = imread("../Data/Outdoor Samples/AUTO2.JPG", IMREAD_COLOR);
 
    if(!img1.data || !img2.data) 
    {
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
    Mat R, t;
    Mat mask; // inlier mask
-   Mat E = findEssentialMat(imgpts1, imgpts2, 1., Point2d(0,0), LMEDS, 0.999);
+   Mat E = findEssentialMat(imgpts1, imgpts2, 1., Point2d(0,0), LMEDS, 0.999, 1.0, mask);
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, 1., Point2d(0,0));
 
    cout << "Matches used for pose recovery: " << inliers << endl;
@@ -86,8 +86,8 @@ int main(int argc, char *argv[])
 
    if (args.epilines)
    {
-      drawEpilines(Mat(imgpts1), 2, E, img2);
-      drawEpilines(Mat(imgpts2), 1, E, img1);
+      drawEpilines(Mat(imgpts1), 1, E, img2);
+      drawEpilines(Mat(imgpts2), 2, E, img1);
    }
 
    Mat img_matches;
