@@ -101,16 +101,19 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    Mat mask; // inlier mask
    if (args.undistort) 
    {
-      undistortPoints(imgpts1, imgpts1, K1, dist_coefficients);
-      undistortPoints(imgpts2, imgpts2, K2, dist_coefficients);
+      undistortPoints(imgpts1, imgpts1, K1, dist_coefficients, noArray(), K1);
+      undistortPoints(imgpts2, imgpts2, K2, dist_coefficients, noArray(), K2);
    } 
 
-   /* Why not use these? */
    double focal = camera_matrix.at<double>(0,0);
    Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
    Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 3, mask);
-   correctMatches(E, imgpts1, imgpts2, imgpts1, imgpts2);
+   /* Mat F = camera_matrix.inv().t() * E * camera_matrix.inv(); */
+   Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_7POINT);
+
+   correctMatches(F, imgpts1, imgpts2, imgpts1, imgpts2);
+
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
    cout << "Matches used for pose recovery: " << inliers << endl;
@@ -128,8 +131,8 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
 
    if (args.epilines)
    {
-      drawEpilines(Mat(imgpts1), 1, E, img2);
-      drawEpilines(Mat(imgpts2), 2, E, img1);
+      drawEpilines(Mat(imgpts1), 1, F, img2);
+      drawEpilines(Mat(imgpts2), 2, F, img1);
    }
 
    drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, // draw only inliers given by mask
@@ -205,6 +208,9 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
          pos++;
          mDist += d;
          n++;
+         /* float startx=imgpts1_masked[i].x - 1, starty=imgpts1_masked[i].y - 1, endx=imgpts1_masked[i].x + 1, endy=imgpts1_masked[i].y + 1; */
+         /* cout << "startx,endx = " << startx << "," << endx << endl; */
+         /* cout << "starty,endy = " << starty << "," << endy << endl; */
          Vec3b rgb = img1.at<Vec3b>(imgpts1_masked[i].x, imgpts1_masked[i].y);
          ply_file << row(0) << " " << row(1) << " " << row(2) << " " << (int)rgb[2] << " " << (int)rgb[1] << " " << (int)rgb[0] << "\n";
       } else
@@ -285,7 +291,8 @@ void drawEpilines(const Mat& image_points, int whichImage, Mat& F, Mat& canvas)
             Point(0,-(*it)[2]/(*it)[1]),
             Point(canvas.cols,-((*it)[2]+
                   (*it)[0]*canvas.cols)/(*it)[1]),
-            Scalar(255,255,255));
+            Scalar(0,0,255), // red
+            1);
    }
 }
 
@@ -299,9 +306,9 @@ double computeReprojectionError(vector<Point2f>& imgpts1, vector<Point2f>& imgpt
    // which were used to estimate F
    vector<Point2f> imgpts1_copy(npt), 
       imgpts2_copy(npt);
+      static int c = 0;
    for (int k = 0; k < inlier_mask.size().height; k++) 
    {
-      static int c = 0;
       if (inlier_mask.at<uchar>(0,k) == 1) 
       {
          imgpts1_copy[c] = imgpts1[k];

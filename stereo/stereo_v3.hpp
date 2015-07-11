@@ -9,6 +9,8 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
+#define PRINT(x) cout << (x) << endl
+
 using namespace cv;
 using namespace std;
 

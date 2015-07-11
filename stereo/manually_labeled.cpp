@@ -1,4 +1,6 @@
 #include <opencv2/opencv.hpp>
+#include <fstream>
+#include <iostream>
 #include <opencv2/highgui.hpp>
 #include "stereo_v3.hpp"
 using namespace cv;
@@ -58,18 +60,19 @@ int main(int argc, char *argv[])
 
    if (args.undistort) 
    {
-      undistortPoints(imgpts1, imgpts1, camera_matrix, dist_coefficients);
-      undistortPoints(imgpts2, imgpts2, camera_matrix, dist_coefficients);
+      undistortPoints(imgpts1, imgpts1, camera_matrix, dist_coefficients, noArray(), camera_matrix);
+      undistortPoints(imgpts2, imgpts2, camera_matrix, dist_coefficients, noArray(), camera_matrix);
    } 
 
    /* Why not use these? */
-   /* double focal = camera_matrix.at<double>(0,0); */
-   /* Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2)); */
+   double focal = camera_matrix.at<double>(0,0);
+   Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
    Mat R, t;
    Mat mask; // inlier mask
-   Mat E = findEssentialMat(imgpts1, imgpts2, 1., Point2d(0,0), LMEDS, 0.999, 1.0, mask);
-   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, 1., Point2d(0,0));
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, LMEDS, 0.999, 1.0, mask);
+   Mat F = camera_matrix.inv().t() * E * camera_matrix.inv();
+   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
    cout << "Matches used for pose recovery: " << inliers << endl;
 
@@ -86,8 +89,8 @@ int main(int argc, char *argv[])
 
    if (args.epilines)
    {
-      drawEpilines(Mat(imgpts1), 1, E, img2);
-      drawEpilines(Mat(imgpts2), 2, E, img1);
+      drawEpilines(Mat(imgpts1), 1, F, img2);
+      drawEpilines(Mat(imgpts2), 2, F, img1);
    }
 
    Mat img_matches;
@@ -127,6 +130,20 @@ int main(int argc, char *argv[])
    int n = 0;
    int pos = 0, neg = 0;
 
+   /* Write ply file header */
+   ofstream ply_file("points.ply", ios_base::trunc);
+   ply_file << 
+      "ply\n"
+      "format ascii 1.0\n"
+      "element vertex " << dehomogenized.rows << "\n"
+      "property float x\n"
+      "property float y\n"
+      "property float z\n"
+      "property uchar red\n"
+      "property uchar green\n"
+      "property uchar blue\n"
+      "end_header" << endl;
+
    Mat_<double> row;
    for (int i = 0; i < dehomogenized.rows; i++) 
    {
@@ -137,9 +154,12 @@ int main(int argc, char *argv[])
          pos++;
          mDist += d;
          n++;
+         Vec3b rgb = img1.at<Vec3b>(imgpts1_masked[i].x, imgpts1_masked[i].y);
+         ply_file << row(0) << " " << row(1) << " " << row(2) << " " << (int)rgb[2] << " " << (int)rgb[1] << " " << (int)rgb[0] << "\n";
       } else
       {
          neg++;
+         ply_file << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << "\n"; 
       }
    }
    mDist /= n;
