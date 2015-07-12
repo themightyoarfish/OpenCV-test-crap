@@ -13,6 +13,7 @@ using namespace std;
 void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dist_coefficients, double& worldScale, Mat& R, Mat& t, Mat& img_matches)
 {
    cout << "%===============================================%" << endl;
+
    Mat camera_matrix = k.clone();
    if (args.resize_factor > 1) 
    {
@@ -307,7 +308,7 @@ double computeReprojectionError(vector<Point2f>& imgpts1, vector<Point2f>& imgpt
    // which were used to estimate F
    vector<Point2f> imgpts1_copy(npt), 
       imgpts2_copy(npt);
-      static int c = 0;
+       int c = 0;
    for (int k = 0; k < inlier_mask.size().height; k++) 
    {
       if (inlier_mask.at<uchar>(0,k) == 1) 
