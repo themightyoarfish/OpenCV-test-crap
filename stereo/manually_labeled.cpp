@@ -70,17 +70,23 @@ int main(int argc, char *argv[])
 
    Mat R, t;
    Mat mask; // inlier mask
-   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, LMEDS, 0.999, 1.0, mask);
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, LMEDS, 0.999);
    Mat F = camera_matrix.inv().t() * E * camera_matrix.inv();
-   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
+   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint);
 
    cout << "Matches used for pose recovery: " << inliers << endl;
 
    /* Mat R1, R2, ProjMat1, ProjMat2, Q; */
-   /* stereoRectify(camera_matrix, dist_coefficients, camera_matrix, dist_coefficients, img1.size(), R, t, R1, R2, ProjMat1, ProjMat2, Q); */
-   /* cout << "P1=" << ProjMat1 << endl; */
-   /* cout << "P2=" << ProjMat2 << endl; */
-   /* cout << "Q=" << Q << endl; */
+   /* stereoRectify(camera_matrix, dist_coefficients, camera_matrix, dist_coefficients, img1.size(), R, t, R1, R2, ProjMat1, ProjMat2, Q, 0); */
+   /* Mat new_camera_matrix, map11, map12, map21, map22, img1_remapped, img2_remapped; */
+   /* initUndistortRectifyMap(camera_matrix, dist_coefficients, R1, ProjMat1, img1.size(), CV_16SC2, map11, map12); */
+   /* initUndistortRectifyMap(camera_matrix, dist_coefficients, R2, ProjMat2, img2.size(), CV_16SC2, map21, map22); */
+   /* remap(img1, img1_remapped, map11, map12, INTER_LINEAR, BORDER_CONSTANT); */
+   /* remap(img2, img2_remapped, map21, map22, INTER_LINEAR, BORDER_CONSTANT); */
+   /* Mat rectifiedImgs; */
+   /* hconcat((Mat[]){img1_remapped, img2_remapped }, 2, rectifiedImgs); */
+   /* imshow("foo", rectifiedImgs); */
+   /* waitKey(0); */
 
    Mat mtxR, mtxQ;
    Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
@@ -94,23 +100,12 @@ int main(int argc, char *argv[])
    }
 
    Mat img_matches;
-   drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, // draw only inliers given by mask
-         matches, img_matches, Scalar::all(-1), Scalar::all(-1));
+   drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, matches, img_matches, Scalar::all(-1), Scalar::all(-1));
    if (args.draw_matches) 
    {
       namedWindow("Matches", CV_WINDOW_NORMAL);
       imshow("Matches", img_matches);
       waitKey(0);
-   }
-
-   vector<Point2f> imgpts1_masked, imgpts2_masked;
-   for (int i = 0; i < NPOINTS; i++) 
-   {
-      if (mask.at<uchar>(i,0) == 1) 
-      {
-         imgpts1_masked.push_back(imgpts1[i]);
-         imgpts2_masked.push_back(imgpts2[i]);
-      }
    }
 
    Mat pnts4D;
@@ -119,7 +114,7 @@ int main(int argc, char *argv[])
    hconcat(p2, 2, P2);
    P2 = camera_matrix * P2;
 
-   triangulatePoints(P1, P2, imgpts1_masked, imgpts2_masked, pnts4D);
+   triangulatePoints(P1, P2, imgpts1, imgpts2, pnts4D);
    pnts4D = pnts4D.t();
    Mat dehomogenized;
    convertPointsFromHomogeneous(pnts4D, dehomogenized);
@@ -154,7 +149,7 @@ int main(int argc, char *argv[])
          pos++;
          mDist += d;
          n++;
-         Vec3b rgb = img1.at<Vec3b>(imgpts1_masked[i].x, imgpts1_masked[i].y);
+         Vec3b rgb = img1.at<Vec3b>(imgpts1[i].x, imgpts1[i].y);
          ply_file << row(0) << " " << row(1) << " " << row(2) << " " << (int)rgb[2] << " " << (int)rgb[1] << " " << (int)rgb[0] << "\n";
       } else
       {

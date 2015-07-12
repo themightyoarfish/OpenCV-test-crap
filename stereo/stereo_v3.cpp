@@ -85,9 +85,9 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
          matcher = BFMatcher(NORM_HAMMING, true);
       else matcher = BFMatcher(NORM_L2, true);
       matcher.match(descriptors_1, descriptors_2, matches);
+      cout << "Number of matching feature points: " << matches.size() << endl;
    }
 
-   cout << "Number of matching feature points: " << matches.size() << endl;
 
    // Convert correspondences to vectors
    vector<Point2f>imgpts1,imgpts2;
@@ -110,9 +110,10 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
 
    Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 3, mask);
    /* Mat F = camera_matrix.inv().t() * E * camera_matrix.inv(); */
-   Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_7POINT);
+   Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_RANSAC);
 
    correctMatches(F, imgpts1, imgpts2, imgpts1, imgpts2);
+   cout << "Reprojection error: " << computeReprojectionError(imgpts1, imgpts2, mask, F) << endl;
 
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
