@@ -99,10 +99,10 @@ int main(int argc, char *argv[])
       drawEpilines(Mat(imgpts2), 2, F, img1);
    }
 
-   Mat img_matches;
-   drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, matches, img_matches, Scalar::all(-1), Scalar::all(-1));
    if (args.draw_matches) 
    {
+      Mat img_matches;
+      drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, matches, img_matches, Scalar::all(-1), Scalar::all(-1));
       namedWindow("Matches", CV_WINDOW_NORMAL);
       imshow("Matches", img_matches);
       waitKey(0);

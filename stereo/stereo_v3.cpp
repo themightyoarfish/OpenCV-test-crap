@@ -109,8 +109,8 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    double focal = camera_matrix.at<double>(0,0);
    Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
-   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 3, mask);
-   /* Mat F = camera_matrix.inv().t() * E * camera_matrix.inv(); */
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 1, mask);
+   /* Mat F = camera_matrix.t().inv() * E * camera_matrix.inv(); */
    Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_RANSAC);
 
    correctMatches(F, imgpts1, imgpts2, imgpts1, imgpts2);
@@ -127,7 +127,11 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    /* cout << "Q=" << Q << endl; */
 
    Mat mtxR, mtxQ;
-   Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
+   Mat Qx, Qy, Qz;
+   Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ, Qx, Qy, Qz);
+   cout << "Qx: " << Qx << endl;
+   cout << "Qy: " << Qy << endl;
+   cout << "Qz: " << Qz << endl;
    cout << "Translation: " << t.t() << endl;
    cout << "Euler angles [x y z] in degrees: " << angles.t() << endl;
 
@@ -156,6 +160,7 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    hconcat(p2, 2, P2);
    P2 = camera_matrix * P2;
    
+#define USE_OPENCV_TRIANGULATION
 #ifndef USE_OPENCV_TRIANGULATION // strangely, both methods yield identical results
    vector<Point3d> homogPoints1, homogPoints2;
    for (int i = 0; i < imgpts1_masked.size(); i++) 
@@ -308,7 +313,7 @@ double computeReprojectionError(vector<Point2f>& imgpts1, vector<Point2f>& imgpt
    // which were used to estimate F
    vector<Point2f> imgpts1_copy(npt), 
       imgpts2_copy(npt);
-       int c = 0;
+   int c = 0;
    for (int k = 0; k < inlier_mask.size().height; k++) 
    {
       if (inlier_mask.at<uchar>(0,k) == 1) 
@@ -322,14 +327,26 @@ double computeReprojectionError(vector<Point2f>& imgpts1, vector<Point2f>& imgpt
    Mat imgpt[2] = { Mat(imgpts1_copy), Mat(imgpts2_copy) };
    computeCorrespondEpilines(imgpt[0], 1, F, lines[0]);
    computeCorrespondEpilines(imgpt[1], 2, F, lines[1]);
-   for(int j = 0; j < npt; j++ )
-   {
-      double errij = fabs(imgpts1_copy[j].x*lines[1][j][0] +
-            imgpts1_copy[j].y*lines[1][j][1] + lines[1][j][2]) +
-         fabs(imgpts2_copy[j].x*lines[0][j][0] +
-               imgpts2_copy[j].y*lines[0][j][1] + lines[0][j][2]);
-      err += errij;
-   }
+    for(int j = 0; j < npt; j++ )
+    {
+        // error is computed as the distance between a point u_l = (x,y) and the epipolar line of its corresponding point u_r in the second image plus the reverse, so errij = d(u_l, F^T * u_r) + d(u_r, F*u_l)
+        Point2f u_l = imgpts1_copy[j], // for the purpose of this function, we imagine imgpts1 to be the "left" image and imgpts2 the "right" one. Doesn't make a difference
+                u_r = imgpts2_copy[j];
+        float a2 = lines[1][j][0], // epipolar line
+              b2 = lines[1][j][1],
+              c2 = lines[1][j][2];
+        float norm_factor2 = sqrt(pow(a2, 2) + pow(b2, 2));
+        float a1 = lines[0][j][0],
+              b1 = lines[0][j][1],
+              c1 = lines[0][j][2];
+        float norm_factor1 = sqrt(pow(a1, 2) + pow(b1, 2));
+        
+        double errij =
+        fabs(u_l.x * a2 + u_l.y * b2 + c2) / norm_factor2 +
+        fabs(u_r.x * a1 + u_r.y * b1 + c1) / norm_factor1; // distance of (x,y) to line (a,b,c) = ax + by + c / (a^2 + b^2)
+        err += errij;
+    }
+
    return err / npt;
 }
 
