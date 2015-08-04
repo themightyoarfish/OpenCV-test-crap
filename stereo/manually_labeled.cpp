@@ -5,11 +5,33 @@
 #include "stereo_v3.hpp"
 using namespace cv;
 using namespace std;
+vector<Point2f> readPts(int index)
+{
+   char filename[100];
+   sprintf(filename, "../Data/Series/Set10/path%d.xml", index);
+   ifstream file(filename,ios::in);
+   vector<Point2f> vec;
+   int n = 0;
+   while (n++ < 20) 
+   {
+      Point2f p;
+      file >> p.x;
+      file >> p.y;
+      vec.push_back(p);
+   }
+   return vec;
+}
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc, argv);
-   Mat img1 = imread("../Data/Outdoor Samples/AUTO1.JPG", IMREAD_COLOR);
-   Mat img2 = imread("../Data/Outdoor Samples/AUTO2.JPG", IMREAD_COLOR);
+
+   int left = atoi(args.left_image_name);
+   int right = atoi(args.right_image_name);
+   char fname[100];
+   sprintf(fname, "../Data/Series/Set10/%d.JPG", left);
+   Mat img1 = imread(fname, IMREAD_COLOR);
+   sprintf(fname, "../Data/Series/Set10/%d.JPG", right);
+   Mat img2 = imread(fname, IMREAD_COLOR);
 
    if(!img1.data || !img2.data) 
    {
@@ -28,9 +50,8 @@ int main(int argc, char *argv[])
       -7.5857781243513097e-04, 1.1949279901859115e-03,
       7.9061044687285797e-01;
 
-
-#include "AUTO_pts.h"
-
+   vector<Point2f> imgpts1 = readPts(left);
+   vector<Point2f> imgpts2 = readPts(right);
    const int NPOINTS = imgpts1.size();
    if (args.resize_factor > 1) 
    {
@@ -70,9 +91,9 @@ int main(int argc, char *argv[])
 
    Mat R, t;
    Mat mask; // inlier mask
-   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, LMEDS, 0.999);
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.1, 1000, mask);
    Mat F = camera_matrix.inv().t() * E * camera_matrix.inv();
-   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint);
+   int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
    cout << "Matches used for pose recovery: " << inliers << endl;
 
@@ -102,7 +123,7 @@ int main(int argc, char *argv[])
    if (args.draw_matches) 
    {
       Mat img_matches;
-      drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, matches, img_matches, Scalar::all(-1), Scalar::all(-1));
+      drawMatches(img1, KeyPoints_1, img2, KeyPoints_2, matches, img_matches, Scalar::all(-1), Scalar::all(-1), mask);
       namedWindow("Matches", CV_WINDOW_NORMAL);
       imshow("Matches", img_matches);
       waitKey(0);
@@ -147,7 +168,7 @@ int main(int argc, char *argv[])
       if (d > 0) 
       {
          pos++;
-         mDist += d;
+         mDist += norm(row);
          n++;
          Vec3b rgb = img1.at<Vec3b>(imgpts1[i].x, imgpts1[i].y);
          ply_file << row(0) << " " << row(1) << " " << row(2) << " " << (int)rgb[2] << " " << (int)rgb[1] << " " << (int)rgb[0] << "\n";
@@ -156,7 +177,13 @@ int main(int argc, char *argv[])
          neg++;
          ply_file << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << " " << 0 << "\n"; 
       }
+      Mat r = pnts4D.row(i).t();
+      r.convertTo(r, P2.type());
+      Mat projPt = P2 * r;
+      projPt = projPt / projPt.at<double>(2);
+      /* cout << projPt.t() << endl; */
    }
+
    mDist /= n;
    cout << "Mean distance of " << n << " points to camera: " << mDist << " (dehomogenized)" << endl;
    cout << "pos=" << pos << ", neg=" << neg << endl;

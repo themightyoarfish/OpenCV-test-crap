@@ -114,11 +114,11 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    Mat F = findFundamentalMat(imgpts1, imgpts2, CV_FM_RANSAC);
 
    correctMatches(F, imgpts1, imgpts2, imgpts1, imgpts2);
-   cout << "Reprojection error: " << computeReprojectionError(imgpts1, imgpts2, mask, F) << endl;
+   cout << "Reprojection error:\n " << computeReprojectionError(imgpts1, imgpts2, mask, F) << endl;
 
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
-   cout << "Matches used for pose recovery: " << inliers << endl;
+   cout << "Matches used for pose recovery:\n " << inliers << endl;
    
    /* Mat R1, R2, ProjMat1, ProjMat2, Q; */
    /* stereoRectify(camera_matrix, dist_coefficients, camera_matrix, dist_coefficients, img1.size(), R, t, R1, R2, ProjMat1, ProjMat2, Q); */
@@ -129,11 +129,11 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    Mat mtxR, mtxQ;
    Mat Qx, Qy, Qz;
    Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ, Qx, Qy, Qz);
-   cout << "Qx: " << Qx << endl;
-   cout << "Qy: " << Qy << endl;
-   cout << "Qz: " << Qz << endl;
-   cout << "Translation: " << t.t() << endl;
-   cout << "Euler angles [x y z] in degrees: " << angles.t() << endl;
+   /* cout << "Qx:\n " << Qx << endl; */
+   /* cout << "Qy:\n " << Qy << endl; */
+   /* cout << "Qz:\n " << Qz << endl; */
+   cout << "Translation:\n " << t.t() << endl;
+   cout << "Euler angles [x y z] in degrees:\n " << angles.t() << endl;
 
    if (args.epilines)
    {
@@ -213,7 +213,7 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
       if (d > 0) 
       {
          pos++;
-         mDist += d;
+         mDist += norm(row);
          n++;
          /* float startx=imgpts1_masked[i].x - 1, starty=imgpts1_masked[i].y - 1, endx=imgpts1_masked[i].x + 1, endy=imgpts1_masked[i].y + 1; */
          /* cout << "startx,endx = " << startx << "," << endx << endl; */
@@ -229,7 +229,7 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    ply_file.close();
    mDist /= n;
    worldScale = mDist;
-   cout << "Mean distance of " << n << " points to camera: " << mDist << " (dehomogenized)" << endl;
+   cout << "Mean distance of " << n << " points to camera:\n " << mDist << " (dehomogenized)" << endl;
    cout << "pos=" << pos << ", neg=" << neg << endl;
 
 

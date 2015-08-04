@@ -9,6 +9,7 @@ if(OpenCV_FOUND)
    include_directories(${OpenCV_INCLUDE_DIRS})
    include_directories("stereo")
    include_directories("triangulate")
+   include_directories("Data/Series/Set6\ labeled")
 
    add_executable(cannyDetector canny/canny.cpp)
    add_executable(transpTest edgesToPng/transpTest.cpp)

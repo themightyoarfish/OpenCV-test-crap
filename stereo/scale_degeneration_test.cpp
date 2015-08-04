@@ -6,10 +6,13 @@ using namespace std;
 using namespace cv;
 
 static vector<string> series = {
-   "/Users/Rasmus/Desktop/Set5/1.jpg",
-   "/Users/Rasmus/Desktop/Set5/2.jpg",
-   "/Users/Rasmus/Desktop/Set5/3.jpg",
-   "/Users/Rasmus/Desktop/Set5/4.jpg",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/0_ref.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/1.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/2.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/3.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/4.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/5.JPG",
+   "/Users/Rasmus/Desktop/Gut Rosenkrantz/6_first_frame_centered.JPG",
 };
 int main(int argc, char *argv[])
 {
@@ -32,19 +35,25 @@ int main(int argc, char *argv[])
       
       // preprocessing
       Mat img_matches; // unused
-      cout << "Preprocessing... (image 4 and image 1)" << endl;
+      cout << "Preprocessing... " << endl;
       computePoseDifference(firstFrame, secondFrame, args, camera_matrix, dist_coefficients, goalScale, RFirstRef, tFirstRef, img_matches);
 
       for (int i = 0; i < series.size() - 1; i++) 
       {
-         cout << "Comparing image 4 and image " << i+1 << endl;
+         cout << "Comparing image " << series.back() << " and image " << series[i] << endl;
          currentFrame = imread(series[i]);
          double worldScale;
          Mat currentR, currentT;
          computePoseDifference(firstFrame,currentFrame, args, camera_matrix, dist_coefficients, worldScale, currentR, currentT, img_matches);
          cout << "Scale ratio: " <<  goalScale / worldScale << endl;
+         Mat necessary_t =  -(-RFirstRef * currentR.t() * currentT + tFirstRef);
+         cout << "Necessary translation = " << necessary_t / norm(necessary_t) << endl;
+         namedWindow("Matches", CV_WINDOW_NORMAL);
+         imshow("Matches", img_matches);
+         waitKey(0);
       }
    }
+   else cout << "Could not read calibration data." << endl;
 
    return 0;
 }
