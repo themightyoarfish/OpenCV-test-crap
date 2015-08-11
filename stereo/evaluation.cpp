@@ -117,9 +117,9 @@ int main(int argc, char *argv[])
 
       Mat R, t;
       Mat mask; // inlier mask
-      Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.1, 5000, mask);
+      Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.9999, 5, mask);
       int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
-      cout << "Matches used for pose recovery: " << inliers << endl;
+      cout << "Matches used for pose recovery: " << inliers << " of " << imgpts1.size() << endl;
 
       Mat mtxR, mtxQ;
       Vec3d angles = RQDecomp3x3(R, mtxR, mtxQ);
