@@ -6,18 +6,23 @@ using namespace cv;
 using namespace std;
 
 static vector<string> filenames = {
-   "/Users/Rasmus/Desktop/Bahnhof/ref_corrected.JPG",
-   "/Users/Rasmus/Desktop/Bahnhof/2.JPG",
-   "/Users/Rasmus/Desktop/Bahnhof/3.JPG",
-   "/Users/Rasmus/Desktop/Bahnhof/4.JPG",
-   "/Users/Rasmus/Desktop/Bahnhof/5.JPG",
-   "/Users/Rasmus/Desktop/Bahnhof/first_frame_centered.JPG",
+   "../Data/Bahnhof/ref_corrected.JPG",
+   "../Data/Bahnhof/2.JPG",
+   "../Data/Bahnhof/3.JPG",
+   "../Data/Bahnhof/4.JPG",
+   "../Data/Bahnhof/5.JPG",
+   "../Data/Bahnhof/first_frame_centered.JPG",
 };
 
 tuple<vector<Point2f>, vector<Point2f>> readPtsFromFile(string filename)
 {
    vector<Point2f> imgpts1, imgpts2;
    ifstream file(filename, ios::in);
+   if (!file.is_open()) 
+   {
+      cerr << "Wtf, dude." << endl;
+      return make_tuple(vector<Point2f>(), vector<Point2f>());
+   }
    char line[100];
    bool first_part = true;
    while (!file.eof()) 
@@ -71,7 +76,7 @@ int main(int argc, char *argv[])
       GET_BASE_NAME(f1);
       string f2 = filenames.back();
       GET_BASE_NAME(f2);
-      sprintf(filename, "/Users/Rasmus/Desktop/Bahnhof/imgpts_%s->%s.txt",f1.c_str(),f2.c_str());
+      sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",f1.c_str(),f2.c_str());
       cout << "Reading from file " << filename << endl;
       tie(imgpts1, imgpts2) = readPtsFromFile(filename);
 
