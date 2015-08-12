@@ -85,7 +85,6 @@ int main(int argc, char *argv[])
       undistortPoints(imgpts2, imgpts2, camera_matrix, dist_coefficients, noArray(), camera_matrix);
    } 
 
-   /* Why not use these? */
    double focal = camera_matrix.at<double>(0,0);
    Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
