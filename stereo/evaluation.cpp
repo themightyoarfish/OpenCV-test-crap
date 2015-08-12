@@ -155,33 +155,62 @@ tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vecto
    return make_tuple(R,t,mDist);
 }
 
+string pathForFiles(string img1, string img2)
+{
+      char filename[100];
+
+      GET_BASE_NAME(img1);
+      GET_BASE_NAME(img2);
+      sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",img1.c_str(),img2.c_str());
+      return string(filename);
+}
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc, argv);
 
-   for (int i = 0; i < filenames.size() -1; i++) 
+   Mat firstFrame, secondFrame, reference, currentFrame;
+   Mat tFirstRef, RFirstRef, tFirstCurrent, RFirstCurrent;
+   double goalScale;
+
+   vector<Point2f> imgpts1, imgpts2; // reusabe vectors for manually labeled points
+   firstFrame = imread(filenames.back());
+   secondFrame = imread(filenames[4]); // 5.JPG
+   reference = imread(filenames.front());
+
+   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
+
+   tie(RFirstRef, tFirstRef, ignore) = compute(firstFrame, reference, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches);
+
+   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames[1],filenames.back())); // swap vectors since first frame points come at the end
+   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1, imgpts2, args.resize_factor);
+
+   cout << "<<<<<< Preprocessing done." << endl;
+
+   for (int i = 1; i < filenames.size() -1; i++) 
    {
-      vector<Point2f> imgpts1, imgpts2;
-      char filename[100];
-
-      string f1 = filenames[i];
-      GET_BASE_NAME(f1);
-      string f2 = filenames.back();
-      GET_BASE_NAME(f2);
-      sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",f1.c_str(),f2.c_str());
+      string filename = pathForFiles(filenames[i],filenames.back());
       cout << "Reading from file " << filename << endl;
-      tie(imgpts1, imgpts2) = readPtsFromFile(filename);
+      tie(imgpts2, imgpts1) = readPtsFromFile(filename); // swap since first frame pts come at the bottom
 
-      Mat img1 = imread(filenames[i], IMREAD_COLOR), img2 = imread(filenames.back(), IMREAD_COLOR);
+      Mat img2 = imread(filenames[i], IMREAD_COLOR), img1 = firstFrame; // make first frame left image
       if(!img1.data || !img2.data) 
       {
          cout << "At least one of the images has no data." << endl;
          return 1;
       }
 
-      Mat R, t;
       double world_scale;
-      tie(R,t,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches);
+      tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches);
+      PRINT("world scale:",world_scale);
+
+      Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
+      Mat tCurrentRef = -(RFirstRef * RFirstCurrent.t() * tFirstCurrent + tFirstRef);
+      Mat mtxR, mtxQ;
+      Vec3d angles = RQDecomp3x3(RCurrentRef, mtxR, mtxQ);
+      cout << "============\n";
+      PRINT("Deduced euler angles [x,y,z]:", angles.t());
+      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef) * (world_scale / goalScale));
+      cout << "============\n" << endl;
 
    }
    return 0;
