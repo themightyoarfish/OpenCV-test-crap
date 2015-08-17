@@ -53,9 +53,15 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
             args.detector_data.nOctaves,
             args.detector_data.nOctaveLayersAkaze);
 
-   } else 
+   } else if (args.detector == DETECTOR_SURF)
+   {
       feat_detector = xfeatures2d::SURF::create(args.detector_data.minHessian, 
             args.detector_data.nOctaves, args.detector_data.nOctaveLayersAkaze, args.detector_data.extended, args.detector_data.upright);
+   } else if (args.detector == DETECTOR_SIFT)
+   {
+      feat_detector = xfeatures2d::SIFT::create(args.detector_data.nFeatures, 
+            args.detector_data.nOctaveLayersSift, args.detector_data.contrastThreshold, args.detector_data.sigma);
+   }
 
    feat_detector->detectAndCompute(img1, noArray(), KeyPoints_1, descriptors_1);
    feat_detector->detectAndCompute(img2, noArray(), KeyPoints_2, descriptors_2);
@@ -119,7 +125,7 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
 
    cout << "Matches used for pose recovery:\n " << inliers << endl;
-   
+
    /* Mat R1, R2, ProjMat1, ProjMat2, Q; */
    /* stereoRectify(camera_matrix, dist_coefficients, camera_matrix, dist_coefficients, img1.size(), R, t, R1, R2, ProjMat1, ProjMat2, Q); */
    /* cout << "P1=" << ProjMat1 << endl; */
@@ -159,7 +165,7 @@ void computePoseDifference(Mat img1, Mat img2, CommandArgs args, Mat k, Mat& dis
    Mat p2[2] = { R, t }; 
    hconcat(p2, 2, P2);
    P2 = camera_matrix * P2;
-   
+
 #define USE_OPENCV_TRIANGULATION
 #ifndef USE_OPENCV_TRIANGULATION // strangely, both methods yield identical results
    vector<Point3d> homogPoints1, homogPoints2;
@@ -327,25 +333,25 @@ double computeReprojectionError(vector<Point2f>& imgpts1, vector<Point2f>& imgpt
    Mat imgpt[2] = { Mat(imgpts1_copy), Mat(imgpts2_copy) };
    computeCorrespondEpilines(imgpt[0], 1, F, lines[0]);
    computeCorrespondEpilines(imgpt[1], 2, F, lines[1]);
-    for(int j = 0; j < npt; j++ )
-    {
-        // error is computed as the distance between a point u_l = (x,y) and the epipolar line of its corresponding point u_r in the second image plus the reverse, so errij = d(u_l, F^T * u_r) + d(u_r, F*u_l)
-        Point2f u_l = imgpts1_copy[j], // for the purpose of this function, we imagine imgpts1 to be the "left" image and imgpts2 the "right" one. Doesn't make a difference
-                u_r = imgpts2_copy[j];
-        float a2 = lines[1][j][0], // epipolar line
-              b2 = lines[1][j][1],
-              c2 = lines[1][j][2];
-        float norm_factor2 = sqrt(pow(a2, 2) + pow(b2, 2));
-        float a1 = lines[0][j][0],
-              b1 = lines[0][j][1],
-              c1 = lines[0][j][2];
-        float norm_factor1 = sqrt(pow(a1, 2) + pow(b1, 2));
-        
-        double errij =
-        fabs(u_l.x * a2 + u_l.y * b2 + c2) / norm_factor2 +
-        fabs(u_r.x * a1 + u_r.y * b1 + c1) / norm_factor1; // distance of (x,y) to line (a,b,c) = ax + by + c / (a^2 + b^2)
-        err += errij;
-    }
+   for(int j = 0; j < npt; j++ )
+   {
+      // error is computed as the distance between a point u_l = (x,y) and the epipolar line of its corresponding point u_r in the second image plus the reverse, so errij = d(u_l, F^T * u_r) + d(u_r, F*u_l)
+      Point2f u_l = imgpts1_copy[j], // for the purpose of this function, we imagine imgpts1 to be the "left" image and imgpts2 the "right" one. Doesn't make a difference
+              u_r = imgpts2_copy[j];
+      float a2 = lines[1][j][0], // epipolar line
+            b2 = lines[1][j][1],
+            c2 = lines[1][j][2];
+      float norm_factor2 = sqrt(pow(a2, 2) + pow(b2, 2));
+      float a1 = lines[0][j][0],
+            b1 = lines[0][j][1],
+            c1 = lines[0][j][2];
+      float norm_factor1 = sqrt(pow(a1, 2) + pow(b1, 2));
+
+      double errij =
+         fabs(u_l.x * a2 + u_l.y * b2 + c2) / norm_factor2 +
+         fabs(u_r.x * a1 + u_r.y * b1 + c1) / norm_factor1; // distance of (x,y) to line (a,b,c) = ax + by + c / (a^2 + b^2)
+      err += errij;
+   }
 
    return err / npt;
 }
@@ -386,7 +392,23 @@ CommandArgs parse_args(int& argc, char* const* argv)
    CommandArgs args;
    for (int i = 1; i < argc; i++) 
    {
-      if (IS_ARG(argv[i], "--left")) 
+      if (IS_ARG(argv[i], "--nFeatures")) 
+      {
+         args.detector_data.nFeatures = atoi(argv[++i]);
+      }
+      else if (IS_ARG(argv[i], "--contrastT"))
+      {
+         args.detector_data.contrastThreshold = atof(argv[++i]);
+      }
+      else if (IS_ARG(argv[i], "--edgeT"))
+      {
+         args.detector_data.edgeThreshold = atof(argv[++i]);
+      }
+      else if (IS_ARG(argv[i], "--sigma"))
+      {
+         args.detector_data.sigma = atof(argv[++i]);
+      }
+      else if (IS_ARG(argv[i], "--left")) 
       {
          args.left_image_name = argv[++i];
       }
@@ -432,6 +454,10 @@ CommandArgs parse_args(int& argc, char* const* argv)
          {
             args.detector = DETECTOR_SURF;
          }
+         else if (0 == strcmp(argv[i+1], "SIFT"))
+         {
+            args.detector = DETECTOR_SIFT;
+         }
          else cout << "Unknonw detector " << argv[i+1] << endl;
          i++;
       }
@@ -445,7 +471,7 @@ CommandArgs parse_args(int& argc, char* const* argv)
       }
       else if (IS_ARG(argv[i], "--octave-layers"))
       {
-         args.detector_data.nOctaveLayersSurf = args.detector_data.nOctaveLayersAkaze = atoi(argv[++i]);
+         args.detector_data.nOctaveLayersSurf = args.detector_data.nOctaveLayersAkaze = args.detector_data.nOctaveLayersSift = atoi(argv[++i]);
       }
       else if (0 == strcmp(argv[i], "--no-extended"))
       {

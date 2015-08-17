@@ -1,9 +1,12 @@
 #include "stereo_v3.hpp"
 #include <fstream>
 #include <sstream>
+#include <opencv2/xfeatures2d.hpp>
 
 using namespace cv;
 using namespace std;
+
+#define FEATURES
 
 static vector<string> filenames = {
    "../Data/Bahnhof/ref_corrected.JPG",
@@ -52,7 +55,7 @@ tuple<vector<Point2f>, vector<Point2f>> readPtsFromFile(string filename)
    file = file.substr(last_backslash + 1, ext_start - last_backslash - 1);\
 }
 
-tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vector<Point2f> imgpts2, int resize_factor = 1, bool epilines = false, bool draw_matches = false)
+tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vector<Point2f> imgpts2, int resize_factor = 1, bool epilines = false, bool draw_matches = false, bool points_are_resized = false)
 {
    Mat_<double> camera_matrix(3,3);
    camera_matrix << 
@@ -70,10 +73,13 @@ tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vecto
    resize(img2, img2, Size(img2.cols / resize_factor, img2.rows / resize_factor));
    camera_matrix = camera_matrix / resize_factor;
    camera_matrix.at<double>(2,2) = 1;
-   for (int i = 0; i < NPOINTS; i++) 
+   if (!points_are_resized)
    {
-      imgpts1[i] = Point2f(imgpts1[i].x / resize_factor, imgpts1[i].y / resize_factor);
-      imgpts2[i] = Point2f(imgpts2[i].x / resize_factor, imgpts2[i].y / resize_factor);
+      for (int i = 0; i < NPOINTS; i++) 
+      {
+         imgpts1[i] = Point2f(imgpts1[i].x / resize_factor, imgpts1[i].y / resize_factor);
+         imgpts2[i] = Point2f(imgpts2[i].x / resize_factor, imgpts2[i].y / resize_factor);
+      }
    }
    vector<DMatch> matches(NPOINTS);
    vector<KeyPoint> KeyPoints_1(NPOINTS), KeyPoints_2(NPOINTS);
@@ -83,16 +89,17 @@ tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vecto
       KeyPoints_1[i] = KeyPoint(imgpts1[i], 10);
       KeyPoints_2[i] = KeyPoint(imgpts2[i], 10);
    }
-      undistortPoints(imgpts1, imgpts1, camera_matrix, dist_coefficients, noArray(), camera_matrix);
-      undistortPoints(imgpts2, imgpts2, camera_matrix, dist_coefficients, noArray(), camera_matrix);
+   undistortPoints(imgpts1, imgpts1, camera_matrix, dist_coefficients, noArray(), camera_matrix);
+   undistortPoints(imgpts2, imgpts2, camera_matrix, dist_coefficients, noArray(), camera_matrix);
 
    double focal = camera_matrix.at<double>(0,0);
    Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
 
    Mat R, t;
    Mat mask; // inlier mask
-   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, LMEDS);
+   Mat E = findEssentialMat(imgpts1, imgpts2, focal, principalPoint, RANSAC, 0.999, 3, mask);
    Mat F = camera_matrix.t().inv() * E * camera_matrix.inv();
+   correctMatches(F, imgpts1, imgpts2, imgpts1, imgpts2);
    int inliers = recoverPose(E, imgpts1, imgpts2, R, t, focal, principalPoint, mask);
    cout << "Matches used for pose recovery: " << inliers << " of " << imgpts1.size() << endl;
 
@@ -155,14 +162,82 @@ tuple<Mat,Mat,double> compute(Mat img1, Mat img2, vector<Point2f> imgpts1, vecto
    return make_tuple(R,t,mDist);
 }
 
+tuple<vector<Point2f>, vector<Point2f>> getFeatureMatches(Mat img1, Mat img2, CommandArgs args)
+{
+   if (args.resize_factor > 1) 
+   {
+      resize(img1, img1, Size(img1.cols / args.resize_factor, img1.rows / args.resize_factor)); 
+      resize(img2, img2, Size(img2.cols / args.resize_factor, img2.rows / args.resize_factor));
+   }
+   vector<KeyPoint> KeyPoints_1, KeyPoints_2;
+   Mat descriptors_1, descriptors_2;
+   Ptr<Feature2D> feat_detector;
+   if (args.detector == DETECTOR_KAZE) 
+   {
+      feat_detector = AKAZE::create(args.detector_data.upright ? AKAZE::DESCRIPTOR_MLDB_UPRIGHT : AKAZE::DESCRIPTOR_MLDB, 
+            args.detector_data.descriptor_size,
+            args.detector_data.descriptor_channels,
+            args.detector_data.threshold,
+            args.detector_data.nOctaves,
+            args.detector_data.nOctaveLayersAkaze);
+
+   } else 
+      feat_detector = xfeatures2d::SURF::create(args.detector_data.minHessian, 
+            args.detector_data.nOctaves, args.detector_data.nOctaveLayersAkaze, args.detector_data.extended, args.detector_data.upright);
+
+   feat_detector->detectAndCompute(img1, noArray(), KeyPoints_1, descriptors_1);
+   feat_detector->detectAndCompute(img2, noArray(), KeyPoints_2, descriptors_2);
+
+   cout << "Number of feature points (img1, img2): " << "(" << KeyPoints_1.size() << ", " << KeyPoints_2.size() << ")" << endl;
+
+   // Find correspondences
+   BFMatcher matcher;
+   vector<DMatch> matches;
+   if (args.use_ratio_test) 
+   {
+      if (args.detector == DETECTOR_KAZE) 
+         matcher = BFMatcher(NORM_HAMMING, false);
+      else matcher = BFMatcher(NORM_L2, false);
+
+      vector<vector<DMatch>> match_candidates;
+      const float ratio = args.ratio;
+      matcher.knnMatch(descriptors_1, descriptors_2, match_candidates, 2);
+      for (int i = 0; i < match_candidates.size(); i++)
+         if (match_candidates[i][0].distance < ratio * match_candidates[i][1].distance)
+            matches.push_back(match_candidates[i][0]);
+
+      cout << "Number of matches passing ratio test: " << matches.size() << endl;
+
+   } else
+   {
+      if (args.detector == DETECTOR_KAZE) 
+         matcher = BFMatcher(NORM_HAMMING, true);
+      else matcher = BFMatcher(NORM_L2, true);
+      matcher.match(descriptors_1, descriptors_2, matches);
+      cout << "Number of matching feature points: " << matches.size() << endl;
+   }
+
+
+   // Convert correspondences to vectors
+   vector<Point2f>imgpts1,imgpts2;
+
+   for(unsigned int i = 0; i < matches.size(); i++) 
+   {
+      imgpts1.push_back(KeyPoints_1[matches[i].queryIdx].pt); 
+      imgpts2.push_back(KeyPoints_2[matches[i].trainIdx].pt); 
+   }
+
+   return make_tuple(imgpts1, imgpts2);
+}
+
 string pathForFiles(string img1, string img2)
 {
-      char filename[100];
+   char filename[100];
 
-      GET_BASE_NAME(img1);
-      GET_BASE_NAME(img2);
-      sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",img1.c_str(),img2.c_str());
-      return string(filename);
+   GET_BASE_NAME(img1);
+   GET_BASE_NAME(img2);
+   sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",img1.c_str(),img2.c_str());
+   return string(filename);
 }
 int main(int argc, char *argv[])
 {
@@ -177,12 +252,26 @@ int main(int argc, char *argv[])
    secondFrame = imread(filenames[4]); // 5.JPG
    reference = imread(filenames.front());
 
+   bool points_are_resized;
+#ifndef FEATURES
    tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
+   points_are_resized = false;
+#else
+   tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,reference,args); 
+   points_are_resized = true;
+#endif
 
-   tie(RFirstRef, tFirstRef, ignore) = compute(firstFrame, reference, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches);
+   tie(RFirstRef, tFirstRef, ignore) = compute(firstFrame, reference, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
 
-   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames[1],filenames.back())); // swap vectors since first frame points come at the end
-   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1, imgpts2, args.resize_factor);
+   // compute scale with first and second frames
+#ifndef FEATURES
+   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // swap vectors since first frame points come at the end
+   points_are_resized = false;
+#else
+   tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,secondFrame,args); 
+   points_are_resized = true;
+#endif
+   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
 
    cout << "<<<<<< Preprocessing done." << endl;
 
@@ -190,7 +279,6 @@ int main(int argc, char *argv[])
    {
       string filename = pathForFiles(filenames[i],filenames.back());
       cout << "Reading from file " << filename << endl;
-      tie(imgpts2, imgpts1) = readPtsFromFile(filename); // swap since first frame pts come at the bottom
 
       Mat img2 = imread(filenames[i], IMREAD_COLOR), img1 = firstFrame; // make first frame left image
       if(!img1.data || !img2.data) 
@@ -199,8 +287,15 @@ int main(int argc, char *argv[])
          return 1;
       }
 
+#ifndef FEATURES
+      tie(imgpts2, imgpts1) = readPtsFromFile(filename); // swap since first frame pts come at the bottom
+#else
+   tie(imgpts1,imgpts2) = getFeatureMatches(img1,img2,args); // swap vectors since first frame points come at the end
+   points_are_resized = true;
+#endif
+
       double world_scale;
-      tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches);
+      tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
       PRINT("world scale:",world_scale);
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();

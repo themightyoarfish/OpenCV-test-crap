@@ -14,7 +14,7 @@
 using namespace cv;
 using namespace std;
 
-typedef enum { DETECTOR_SURF, DETECTOR_KAZE } detector_type;
+typedef enum { DETECTOR_SURF, DETECTOR_KAZE, DETECTOR_SIFT } detector_type;
 
 typedef struct 
 {
@@ -27,6 +27,13 @@ typedef struct
    int descriptor_size = 0;
    int descriptor_channels = 3;
    float threshold = .001;
+
+   // SIFT
+   int nOctaveLayersSift = 3;
+   int nFeatures = 0;
+   double contrastThreshold = 0.04;
+   double edgeThreshold = 10;
+   double sigma = 1.6;
 
 } DetectorData;
 
