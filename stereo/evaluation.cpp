@@ -6,7 +6,7 @@
 using namespace cv;
 using namespace std;
 
-#define FEATURES
+/* #define FEATURES */
 
 static vector<string> filenames = {
    "../Data/Bahnhof/ref_corrected.JPG",
@@ -17,22 +17,33 @@ static vector<string> filenames = {
    "../Data/Bahnhof/first_frame_centered.JPG",
 };
 
-tuple<vector<Point2f>, vector<Point2f>> readPtsFromFile(string filename)
+tuple<vector<Point2f>, vector<Point2f>, double> readPtsFromFile(string filename)
 {
    vector<Point2f> imgpts1, imgpts2;
    ifstream file(filename, ios::in);
    if (!file.is_open()) 
    {
       cerr << "Wtf, dude." << endl;
-      return make_tuple(vector<Point2f>(), vector<Point2f>());
+      return make_tuple(vector<Point2f>(), vector<Point2f>(), -1.0);
    }
    char line[100];
    bool first_part = true;
+   double distance;
    while (!file.eof()) 
    {
       file.getline(line, 30);
       if (file.eof()) break;
-      if (line[0] == '"') continue;
+      if (line[0] == '"') 
+      {
+         if (line[1] == '[') 
+         {
+            const char* format = "\"[x,y] = [%lf,%lf]\"";
+            double x, y;
+            sscanf(line, format, &x, &y);
+            distance = sqrt(x * x + y * y);
+         } 
+         continue;
+      }
       if(line[0] == '\0')
       {
          first_part = false;
@@ -45,7 +56,7 @@ tuple<vector<Point2f>, vector<Point2f>> readPtsFromFile(string filename)
       else
          imgpts2.push_back(p);
    }
-   return make_tuple(imgpts1, imgpts2);
+   return make_tuple(imgpts1, imgpts2, distance);
 }
 
 #define GET_BASE_NAME(file)\
@@ -246,6 +257,7 @@ int main(int argc, char *argv[])
    Mat firstFrame, secondFrame, reference, currentFrame;
    Mat tFirstRef, RFirstRef, tFirstCurrent, RFirstCurrent;
    double goalScale;
+   double dist_first_ref, dist_first_second;
 
    vector<Point2f> imgpts1, imgpts2; // reusabe vectors for manually labeled points
    firstFrame = imread(filenames.back());
@@ -254,9 +266,10 @@ int main(int argc, char *argv[])
 
    bool points_are_resized;
 #ifndef FEATURES
-   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
+   tie(imgpts2,imgpts1, dist_first_ref) = readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
    points_are_resized = false;
 #else
+   tie(ignore, ignore, dist_first_ref) = readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // get only distance (sloppy)
    tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,reference,args); 
    points_are_resized = true;
 #endif
@@ -265,9 +278,10 @@ int main(int argc, char *argv[])
 
    // compute scale with first and second frames
 #ifndef FEATURES
-   tie(imgpts2,imgpts1) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // swap vectors since first frame points come at the end
+   tie(imgpts2,imgpts1,dist_first_second) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // swap vectors since first frame points come at the end
    points_are_resized = false;
 #else
+   tie(ignore,ignore,dist_first_second) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // get only distance
    tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,secondFrame,args); 
    points_are_resized = true;
 #endif
@@ -275,10 +289,12 @@ int main(int argc, char *argv[])
 
    cout << "<<<<<< Preprocessing done." << endl;
 
-   for (int i = 1; i < filenames.size() -1; i++) 
+   for (int i = 0; i < filenames.size() -1; i++) 
    {
       string filename = pathForFiles(filenames[i],filenames.back());
+#ifndef FEATURES
       cout << "Reading from file " << filename << endl;
+#endif
 
       Mat img2 = imread(filenames[i], IMREAD_COLOR), img1 = firstFrame; // make first frame left image
       if(!img1.data || !img2.data) 
@@ -287,16 +303,19 @@ int main(int argc, char *argv[])
          return 1;
       }
 
+      double camera_distance;
 #ifndef FEATURES
-      tie(imgpts2, imgpts1) = readPtsFromFile(filename); // swap since first frame pts come at the bottom
+      tie(imgpts2, imgpts1, camera_distance) = readPtsFromFile(filename); // swap since first frame pts come at the bottom
 #else
-   tie(imgpts1,imgpts2) = getFeatureMatches(img1,img2,args); // swap vectors since first frame points come at the end
-   points_are_resized = true;
+      tie(ignore, ignore, camera_distance) = readPtsFromFile(filename); // only get distance
+      tie(imgpts1,imgpts2) = getFeatureMatches(img1,img2,args); 
+      points_are_resized = true;
 #endif
 
       double world_scale;
       tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
-      PRINT("world scale:",world_scale);
+      PRINT("world scale ratio:",world_scale/goalScale);
+      PRINT("Real ratio:",1.0/(camera_distance/dist_first_second));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
       Mat tCurrentRef = -(RFirstRef * RFirstCurrent.t() * tFirstCurrent + tFirstRef);
