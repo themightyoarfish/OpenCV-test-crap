@@ -6,15 +6,28 @@
 using namespace cv;
 using namespace std;
 
+/* #define BAHNHOF */
 /* #define FEATURES */
 
-static vector<string> filenames = {
+static vector<string> bahnhof = {
    "../Data/Bahnhof/ref_corrected.JPG",
    "../Data/Bahnhof/2.JPG",
    "../Data/Bahnhof/3.JPG",
    "../Data/Bahnhof/4.JPG",
    "../Data/Bahnhof/5.JPG",
    "../Data/Bahnhof/first_frame_centered.JPG",
+};
+
+static vector<string> gut_rosenkrantz = {
+   "../Data/Gut Rosenkrantz/0_ref.JPG",
+   "../Data/Gut Rosenkrantz/1.JPG",
+   "../Data/Gut Rosenkrantz/2.JPG",
+   "../Data/Gut Rosenkrantz/3.JPG",
+   "../Data/Gut Rosenkrantz/4.JPG",
+   "../Data/Gut Rosenkrantz/5.JPG",
+   "../Data/Gut Rosenkrantz/8.JPG",
+   "../Data/Gut Rosenkrantz/9.JPG",
+   "../Data/Gut Rosenkrantz/first_frame_centered.JPG",
 };
 
 tuple<vector<Point2f>, vector<Point2f>, double> readPtsFromFile(string filename)
@@ -247,21 +260,37 @@ string pathForFiles(string img1, string img2)
 
    GET_BASE_NAME(img1);
    GET_BASE_NAME(img2);
+#ifdef BAHNHOF
    sprintf(filename, "../Data/Bahnhof/imgpts_%s->%s.txt",img1.c_str(),img2.c_str());
+#else
+   sprintf(filename, "../Data/Gut Rosenkrantz/imgpts_%s->%s.txt",img1.c_str(),img2.c_str());
+#endif
    return string(filename);
 }
 int main(int argc, char *argv[])
 {
    CommandArgs args = parse_args(argc, argv);
 
+#ifdef BAHNHOF
+   vector<string> filenames = bahnhof;
+#else
+   vector<string> filenames = gut_rosenkrantz;
+#endif
+
    Mat firstFrame, secondFrame, reference, currentFrame;
    Mat tFirstRef, RFirstRef, tFirstCurrent, RFirstCurrent;
    double goalScale;
    double dist_first_ref, dist_first_second;
 
+#ifdef BAHNHOF
+   string secondFrameName = filenames[4]; // 5.JPG
+#else
+   string secondFrameName = filenames[1]; // 1.JPG
+#endif
+
    vector<Point2f> imgpts1, imgpts2; // reusabe vectors for manually labeled points
    firstFrame = imread(filenames.back());
-   secondFrame = imread(filenames[4]); // 5.JPG
+   secondFrame = imread(secondFrameName); 
    reference = imread(filenames.front());
 
    bool points_are_resized;
@@ -274,20 +303,26 @@ int main(int argc, char *argv[])
    points_are_resized = true;
 #endif
 
-   tie(RFirstRef, tFirstRef, ignore) = compute(firstFrame, reference, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
+   tie(RFirstRef, tFirstRef, ignore) = compute(firstFrame, reference, imgpts1,
+         imgpts2, args.resize_factor, args.epilines, args.draw_matches,
+         points_are_resized);
 
    // compute scale with first and second frames
 #ifndef FEATURES
-   tie(imgpts2,imgpts1,dist_first_second) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // swap vectors since first frame points come at the end
+   tie(imgpts2,imgpts1,dist_first_second) =
+      readPtsFromFile(pathForFiles(secondFrameName,filenames.back())); // swap vectors since first frame points come at the end
    points_are_resized = false;
 #else
-   tie(ignore,ignore,dist_first_second) = readPtsFromFile(pathForFiles(filenames[4],filenames.back())); // get only distance
+   tie(ignore,ignore,dist_first_second) =
+      readPtsFromFile(pathForFiles(secondFrameName,filenames.back())); // get only distance
    tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,secondFrame,args); 
    points_are_resized = true;
 #endif
-   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
+   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1,
+         imgpts2, args.resize_factor, args.epilines, args.draw_matches,
+         points_are_resized);
 
-   cout << "<<<<<< Preprocessing done." << endl;
+   cout << "<<<<<< Preprocessing done. >>>>>>" << endl;
 
    for (int i = 0; i < filenames.size() -1; i++) 
    {
@@ -318,12 +353,12 @@ int main(int argc, char *argv[])
       PRINT("Real ratio:",1.0/(camera_distance/dist_first_second));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
-      Mat tCurrentRef = -(RFirstRef * RFirstCurrent.t() * tFirstCurrent + tFirstRef);
+      Mat tCurrentRef = (-(RFirstRef * RFirstCurrent.t() * tFirstCurrent) + tFirstRef);
       Mat mtxR, mtxQ;
       Vec3d angles = RQDecomp3x3(RCurrentRef, mtxR, mtxQ);
       cout << "============\n";
       PRINT("Deduced euler angles [x,y,z]:", angles.t());
-      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef) * (world_scale / goalScale));
+      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef)/* * (world_scale / goalScale)*/);
       cout << "============\n" << endl;
 
    }
