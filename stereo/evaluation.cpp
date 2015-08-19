@@ -6,7 +6,7 @@
 using namespace cv;
 using namespace std;
 
-/* #define BAHNHOF */
+#define BAHNHOF
 /* #define FEATURES */
 
 static vector<string> bahnhof = {
@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
       PRINT("Real ratio:",1.0/(camera_distance/dist_first_second));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
-      Mat tCurrentRef = (-(RFirstRef * RFirstCurrent.t() * tFirstCurrent) + tFirstRef);
+      Mat tCurrentRef = -(RFirstRef * RFirstCurrent.t() * tFirstCurrent) + tFirstRef;
       Mat mtxR, mtxQ;
       Vec3d angles = RQDecomp3x3(RCurrentRef, mtxR, mtxQ);
       cout << "============\n";
