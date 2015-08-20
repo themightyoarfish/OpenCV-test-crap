@@ -6,7 +6,7 @@
 using namespace cv;
 using namespace std;
 
-#define BAHNHOF
+/* #define BAHNHOF */
 /* #define FEATURES */
 
 static vector<string> bahnhof = {
@@ -310,17 +310,18 @@ int main(int argc, char *argv[])
    // compute scale with first and second frames
 #ifndef FEATURES
    tie(imgpts2,imgpts1,dist_first_second) =
-      readPtsFromFile(pathForFiles(secondFrameName,filenames.back())); // swap vectors since first frame points come at the end
+      readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
    points_are_resized = false;
 #else
    tie(ignore,ignore,dist_first_second) =
-      readPtsFromFile(pathForFiles(secondFrameName,filenames.back())); // get only distance
-   tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,secondFrame,args); 
+      readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // get only distance
+   tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,reference,args); 
    points_are_resized = true;
 #endif
-   tie(ignore, ignore, goalScale) = compute(firstFrame, secondFrame, imgpts1,
+   tie(ignore, ignore, goalScale) = compute(firstFrame, reference, imgpts1,
          imgpts2, args.resize_factor, args.epilines, args.draw_matches,
          points_are_resized);
+   cout << "Goal scale: " << goalScale << endl;
 
    cout << "<<<<<< Preprocessing done. >>>>>>" << endl;
 
@@ -349,16 +350,21 @@ int main(int argc, char *argv[])
 
       double world_scale;
       tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
+      double ratio = world_scale / goalScale;
+      cout << "Current world scale: " << world_scale << endl;
+      cout << "Goal world scale: " << goalScale << endl;
       PRINT("world scale ratio:",world_scale/goalScale);
       PRINT("Real ratio:",1.0/(camera_distance/dist_first_second));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
-      Mat tCurrentRef = -(RFirstRef * RFirstCurrent.t() * tFirstCurrent) + tFirstRef;
+      Mat tCurrentRef = -RFirstRef * RFirstCurrent.t() * tFirstCurrent * ratio + tFirstRef;
       Mat mtxR, mtxQ;
+      /* cout << RFirstRef * RFirstCurrent.t() * tFirstCurrent * ratio << endl; */
+      /* cout << tFirstRef << endl; */
       Vec3d angles = RQDecomp3x3(RCurrentRef, mtxR, mtxQ);
       cout << "============\n";
       PRINT("Deduced euler angles [x,y,z]:", angles.t());
-      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef)/* * (world_scale / goalScale)*/);
+      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef)/* * ratio*/);
       cout << "============\n" << endl;
 
    }
