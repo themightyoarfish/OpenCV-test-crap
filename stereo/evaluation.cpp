@@ -25,7 +25,7 @@ static vector<string> gut_rosenkrantz = {
    "../Data/Gut Rosenkrantz/3.JPG",
    "../Data/Gut Rosenkrantz/4.JPG",
    "../Data/Gut Rosenkrantz/5.JPG",
-   "../Data/Gut Rosenkrantz/8.JPG",
+   /* "../Data/Gut Rosenkrantz/8.JPG", */ // this is from the same spot as the first frame
    "../Data/Gut Rosenkrantz/9.JPG",
    "../Data/Gut Rosenkrantz/first_frame_centered.JPG",
 };
@@ -309,11 +309,11 @@ int main(int argc, char *argv[])
 
    // compute scale with first and second frames
 #ifndef FEATURES
-   tie(imgpts2,imgpts1,dist_first_second) =
+   tie(imgpts2,imgpts1,dist_first_ref) =
       readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // swap vectors since first frame points come at the end
    points_are_resized = false;
 #else
-   tie(ignore,ignore,dist_first_second) =
+   tie(ignore,ignore,dist_first_ref) =
       readPtsFromFile(pathForFiles(filenames.front(),filenames.back())); // get only distance
    tie(imgpts1,imgpts2) = getFeatureMatches(firstFrame,reference,args); 
    points_are_resized = true;
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
       cout << "Current world scale: " << world_scale << endl;
       cout << "Goal world scale: " << goalScale << endl;
       PRINT("world scale ratio:",world_scale/goalScale);
-      PRINT("Real ratio:",1.0/(camera_distance/dist_first_second));
+      PRINT("Real ratio:",1.0/(camera_distance/dist_first_ref));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
       Mat tCurrentRef = -RFirstRef * RFirstCurrent.t() * tFirstCurrent * ratio + tFirstRef;

@@ -1,0 +1,13 @@
+" Format: imgname1 [theta_x, theta_y, theta_z] [trans_x, trans_y, trans_z] distance_ratio
+" For each image, the rotation and translation to transform its coordinates to the reference
+" frame is given. distance_ratio is the ratio between median distance of points
+" computed with imgname1 and first frame and that computed with reference and
+" first frame (or second frame and first frame, let's see)
+
+0_ref [0, 0, 0] [0, 0, 0] 1
+1 [-1.78574022, -5.48276908, 2.10731833] [1, 0, 0] 1.14018
+2 [-2.14281947, -6.57735164,  1.65843071] [0.89442719, 0., 0.4472136] 1.34371
+3 [0.72633066, -5.06868602, 2.61766054] [0.70710678, 0., 0.70710678] 1.32543
+4 [-1.41461999, -10.79986981, 2.22505187] [0.8479983, 0., -0.52999894] 1.51687
+5 [-0.18872172, -16.6670625, 1.22119762] [0.92847669, 0., 0.37139068] 2.54951
+9 [-0.87252387, -18.09335591, 1.53858261] [0.93632918, 0., -0.35112344] 2.01556
