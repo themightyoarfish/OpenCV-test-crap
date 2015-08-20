@@ -1,13 +1,20 @@
 #include "stereo_v3.hpp"
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include <opencv2/xfeatures2d.hpp>
 
 using namespace cv;
 using namespace std;
 
-/* #define BAHNHOF */
-/* #define FEATURES */
+#define BAHNHOF
+#define FEATURES
+
+#ifdef BAHNHOF
+static string TRUTH = "../Data/Bahnhof/TRUTH.txt";
+#else
+static string TRUTH = "../Data/Gut Rosenkrantz/TRUTH.txt";
+#endif
 
 static vector<string> bahnhof = {
    "../Data/Bahnhof/ref_corrected.JPG",
@@ -29,6 +36,42 @@ static vector<string> gut_rosenkrantz = {
    "../Data/Gut Rosenkrantz/9.JPG",
    "../Data/Gut Rosenkrantz/first_frame_centered.JPG",
 };
+
+static tuple<Mat,Mat,double> realTransLationForImage(string image_base_name)
+{
+   ifstream file(TRUTH, ios::in);
+   if (!file.is_open()) 
+   {
+      cerr << "Could not read truth data." << endl;
+      return make_tuple(Mat(),Mat(),0);
+   }
+   char line[200];
+   size_t s = image_base_name.length();
+   double theta_x,theta_y,theta_z,trans_x,trans_y,trans_z,dist_ratio;
+   bool found = false;
+   char unused[1024];
+   while (!file.eof() && !found)
+   {
+      file.getline(line, 199);
+      if (file.eof()) break;
+      if (line[0] == '"' || line[0] == '\0') continue;
+      if (string(line,s) == image_base_name) 
+      {
+         found = true;
+         sscanf(line, "%s [%lf,%lf,%lf] [%lf,%lf,%lf] %lf",unused, &theta_x,&theta_y,&theta_z,&trans_x,&trans_y,&trans_z,&dist_ratio);
+         break;
+      }
+   }
+   if (found) 
+   {
+      Mat_<double> rot(3,1), trans(3,1);
+      rot << theta_x, theta_y, theta_z;
+      trans << trans_x, trans_y, trans_z;
+      return make_tuple(rot, trans, dist_ratio);
+   }
+      return make_tuple(Mat(),Mat(),0);
+}
+
 
 tuple<vector<Point2f>, vector<Point2f>, double> readPtsFromFile(string filename)
 {
@@ -325,6 +368,38 @@ int main(int argc, char *argv[])
 
    cout << "<<<<<< Preprocessing done. >>>>>>" << endl;
 
+   /* Open data tile with format fname x y z thetax thetay theta z dist_ratio realx realy realz realtthetax realthetay tealthetaz realdist_ratio */
+   vector<string> header = {
+      "fname", "x", "y", "z", "thetax", "thetay", "thetaz", "dist_ratio",
+      "realx", "realy", "realz", "realthetax", "realthetay", "realthetaz",
+      "realdist_ratio"
+   };
+   char datafilename[200];
+   switch(args.detector)
+   {
+      case DETECTOR_SIFT:
+#ifdef BAHNHOF
+         sprintf(datafilename, "bahnhof_detector_%s_resize_%d_ratio_%lf.dat", "SIFT", args.resize_factor, args.ratio);
+#else
+         sprintf(datafilename, "gut_rosenkrantz_detector_%s_resize_%d_ratio_%lf.dat", "SIFT", args.resize_factor, args.ratio);
+#endif
+         break;
+      case DETECTOR_KAZE:
+#ifdef BAHNHOF
+         sprintf(datafilename, "bahnhof_detector_%s_resize_%d_ratio_%lf.dat", "KAZE", args.resize_factor, args.ratio);
+#else
+         sprintf(datafilename, "gut_rosenkrantz_detector_%s_resize_%d_ratio_%lf.dat", "KAZE", args.resize_factor, args.ratio);
+#endif
+         break;
+   }
+   ofstream datafile(datafilename);
+   if (datafile.is_open()) 
+   {
+      for (vector<string>::iterator i = header.begin(); i != header.end(); i++) 
+         datafile << setw(16) << *i;
+   }
+   datafile << endl;
+
    for (int i = 0; i < filenames.size() -1; i++) 
    {
       string filename = pathForFiles(filenames[i],filenames.back());
@@ -351,21 +426,51 @@ int main(int argc, char *argv[])
       double world_scale;
       tie(RFirstCurrent,tFirstCurrent,world_scale) = compute(img1, img2, imgpts1, imgpts2, args.resize_factor, args.epilines, args.draw_matches, points_are_resized);
       double ratio = world_scale / goalScale;
-      cout << "Current world scale: " << world_scale << endl;
-      cout << "Goal world scale: " << goalScale << endl;
-      PRINT("world scale ratio:",world_scale/goalScale);
-      PRINT("Real ratio:",1.0/(camera_distance/dist_first_ref));
 
       Mat RCurrentRef = RFirstRef * RFirstCurrent.t();
-      Mat tCurrentRef = -RFirstRef * RFirstCurrent.t() * tFirstCurrent * ratio + tFirstRef;
+      Mat tCurrentRef = -RFirstRef * RFirstCurrent.t() * tFirstCurrent + tFirstRef;
+      tCurrentRef = tCurrentRef / norm(tCurrentRef);
       Mat mtxR, mtxQ;
-      /* cout << RFirstRef * RFirstCurrent.t() * tFirstCurrent * ratio << endl; */
-      /* cout << tFirstRef << endl; */
+      cout << "Translation to reference: " << tCurrentRef.t() << endl;
       Vec3d angles = RQDecomp3x3(RCurrentRef, mtxR, mtxQ);
-      cout << "============\n";
-      PRINT("Deduced euler angles [x,y,z]:", angles.t());
-      PRINT("Translation: ", tCurrentRef / norm(tCurrentRef)/* * ratio*/);
-      cout << "============\n" << endl;
+      cout << "Rotation to reference: " << angles << endl;
+      cout << "Ratio: " << ratio << endl;
+
+      Mat realRot, realTrans;
+      double realDistRatio;
+      string fname = filenames[i];
+      GET_BASE_NAME(fname);
+      tie(realRot,realTrans,realDistRatio) = realTransLationForImage(fname);
+
+      cout << "================================================\n";
+      /* PRINT("Deduced euler angles [x,y,z]:", angles.t()); */
+      /* PRINT("Translation: ", tCurrentRef / norm(tCurrentRef) * ratio); */
+      /* PRINT("world scale ratio:",world_scale/goalScale); */
+      /* PRINT("Real ratio:",1.0/(camera_distance/dist_first_ref)); */
+      cout << "Translation difference: " << (tCurrentRef - realTrans).t() << endl;
+      cout << "Rotation difference: " << (Mat(angles) - realRot).t() << endl;
+      cout << "Ratio difference: " << ratio - realDistRatio << endl;
+      cout << "================================================\n" << endl;
+
+   /* fname x y z thetax thetay thetaz dist_ratio realx realy realz realtthetax realthetay tealthetaz realdist_ratio */
+      string base_file_name = filenames[i];
+      GET_BASE_NAME(base_file_name);
+      datafile << setw(16) << base_file_name;
+      datafile << setw(16) << tCurrentRef.at<double>(0);
+      datafile << setw(16) << tCurrentRef.at<double>(1);
+      datafile << setw(16) << tCurrentRef.at<double>(2);
+      datafile << setw(16) << angles[0];
+      datafile << setw(16) << angles[1];
+      datafile << setw(16) << angles[2];
+      datafile << setw(16) << ratio;
+      datafile << setw(16) << realTrans.at<double>(0);
+      datafile << setw(16) << realTrans.at<double>(1);
+      datafile << setw(16) << realTrans.at<double>(2);
+      datafile << setw(16) << realRot.at<double>(0);
+      datafile << setw(16) << realRot.at<double>(1);
+      datafile << setw(16) << realRot.at<double>(2);
+      datafile << setw(16) << realDistRatio;
+      datafile << endl;
 
    }
    return 0;
