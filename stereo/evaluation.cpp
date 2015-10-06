@@ -69,7 +69,7 @@ static tuple<Mat,Mat,double> realTransLationForImage(string image_base_name)
       trans << trans_x, trans_y, trans_z;
       return make_tuple(rot, trans, dist_ratio);
    }
-      return make_tuple(Mat(),Mat(),0);
+   return make_tuple(Mat(),Mat(),0);
 }
 
 
@@ -402,6 +402,9 @@ int main(int argc, char *argv[])
 
    for (int i = 0; i < filenames.size() -1; i++) 
    {
+      cout << "Comparing images: " << endl;
+      cout << "\t" << filenames.back() << endl;
+      cout << "\t" << filenames[i] << endl;
       string filename = pathForFiles(filenames[i],filenames.back());
 #ifndef FEATURES
       cout << "Reading from file " << filename << endl;
@@ -447,12 +450,14 @@ int main(int argc, char *argv[])
       /* PRINT("Translation: ", tCurrentRef / norm(tCurrentRef) * ratio); */
       /* PRINT("world scale ratio:",world_scale/goalScale); */
       /* PRINT("Real ratio:",1.0/(camera_distance/dist_first_ref)); */
+      cout << "Real rotation: " << realRot.t() << endl;
+      cout << "Real translation: " << realTrans.t() << endl;
       cout << "Translation difference: " << (tCurrentRef - realTrans).t() << endl;
       cout << "Rotation difference: " << (Mat(angles) - realRot).t() << endl;
       cout << "Ratio difference: " << ratio - realDistRatio << endl;
       cout << "================================================\n" << endl;
 
-   /* fname x y z thetax thetay thetaz dist_ratio realx realy realz realtthetax realthetay tealthetaz realdist_ratio */
+      /* fname x y z thetax thetay thetaz dist_ratio realx realy realz realtthetax realthetay tealthetaz realdist_ratio */
       string base_file_name = filenames[i];
       GET_BASE_NAME(base_file_name);
       datafile << setw(16) << base_file_name;
