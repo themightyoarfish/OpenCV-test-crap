@@ -17,7 +17,7 @@ int main(int argc, const char *argv[])
    }
    Mat left = imread(argv[1]);
    Mat right = imread(argv[2]);
-   if (!left.data || !right.data) 
+   if (!left.data || !right.data) 
    {
       cerr << "Failed to read at leas one image." << endl;
       return -2;

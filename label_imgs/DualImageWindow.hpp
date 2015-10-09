@@ -1,7 +1,8 @@
 #include <opencv2/core.hpp>
-#include <map>
+#include <vector>
 using std::string;
-using std::map;
+using std::vector;
+using std::pair;
 using cv::Mat;
 using cv::Point2i;
 namespace imagelabeling 
@@ -16,10 +17,14 @@ namespace imagelabeling
          virtual ~DualImageWindow();
 
       private:
-         void refresh();
          Mat left_img, right_img, combined_imgs;
          string window_name;
-         map<Point2i,Point2i> correspondences;
+         vector<Point2i> correspondences;
+         bool firstPointSet;
+
+         void refresh();
+         bool handleKeyEvent(const int key) const;
+         void combine_imgs(const Mat& left_img, const Mat& right_img);
    };
 
 } /* namespace imagelabeling */
