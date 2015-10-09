@@ -4,6 +4,7 @@
 #include <iostream>
 
 static const int ESC = 27; // ascii of escape key
+static const int LOWER_Z = 122; // ascii of z key
 
 namespace imagelabeling 
 {
@@ -46,8 +47,22 @@ namespace imagelabeling
       while(handleKeyEvent(waitKey(0)));
 
    }
-   bool DualImageWindow::handleKeyEvent(const int key) const
+   bool DualImageWindow::handleKeyEvent(const int key)
    {
+      switch (key)
+      {
+         case ESC: 
+            return false;
+         case LOWER_Z: 
+            if (!correspondences.empty()) 
+            {
+               correspondences.pop_back();
+               firstPointSet = !firstPointSet;
+               refresh();
+            }
+         default:
+            return true;
+      }
       if(key == ESC) return false;
       else
       {

@@ -23,7 +23,7 @@ namespace imagelabeling
          bool firstPointSet;
 
          void refresh();
-         bool handleKeyEvent(const int key) const;
+         bool handleKeyEvent(const int key);
          void combine_imgs(const Mat& left_img, const Mat& right_img);
    };
 
