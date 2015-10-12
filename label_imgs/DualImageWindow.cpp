@@ -4,7 +4,6 @@
 #include <iostream>
 
 static const int ESC = 27; // ascii of escape key
-static const int LOWER_Z = 122; // ascii of z key
 
 namespace imagelabeling 
 {
@@ -37,6 +36,14 @@ namespace imagelabeling
          circle(combined_imgs, *iter, 8, Scalar(0,0,255), 2);
       imshow(window_name, combined_imgs);
    }
+   vector<pair<Point2i,Point2i>> DualImageWindow::points()
+   {
+      auto& corr = correspondences;
+      vector<pair<Point2i,Point2i>> points(corr.size() / 2);
+      for (int i = 0; i < corr.size() / 2; i++) 
+         points[i] = std::make_pair(corr[2*i], corr[2*i+1]);
+      return points;
+   }
    void DualImageWindow::show()
    {
       combine_imgs(left_img, right_img);
@@ -53,7 +60,7 @@ namespace imagelabeling
       {
          case ESC: 
             return false;
-         case LOWER_Z: 
+         case 'z': 
             if (!correspondences.empty()) 
             {
                correspondences.pop_back();

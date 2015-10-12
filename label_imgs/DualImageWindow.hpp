@@ -12,7 +12,10 @@ namespace imagelabeling
       public:
          explicit DualImageWindow (const Mat left_img, const Mat right_img, 
                const string window_name = "Label Images");
+         vector<pair<Point2i,Point2i>> points();
          void show();
+
+
          static void mouseCallback(int event, int x, int y, int flags, void* data);
          virtual ~DualImageWindow();
 
