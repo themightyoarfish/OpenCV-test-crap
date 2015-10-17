@@ -43,9 +43,9 @@ int main(int argc, const char *argv[])
       return -2;
    }
    auto points = label_images(left, right);
+   serialize_vector(points, fname);
+   points = deserialize_vector<Point2i,Point2i>(fname);
    for (auto iter = points.begin() ; iter != points.end() ; iter++)
       cout << "(" << iter->first << "," << iter->second << ")"<< endl;
-
-   serialize_vector(points, fname);
    return 0;
 }
