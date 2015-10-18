@@ -23,6 +23,7 @@ if(OpenCV_FOUND)
    add_executable(manually_labelled stereo/manually_labeled.cpp stereo/stereo_v3.cpp triangulate/Triangulation.cpp)
    add_executable(castle_data stereo/castle_data.cpp stereo/stereo_v3.cpp)
    add_executable(evaluation stereo/evaluation.cpp stereo/stereo_v3.cpp)
+   add_executable(solvePnP solvePnP/solvePnP.cpp)
 
    target_link_libraries(cannyDetector ${OpenCV_LIBS})
    target_link_libraries(transpTest ${OpenCV_LIBS})
@@ -33,6 +34,9 @@ if(OpenCV_FOUND)
    target_link_libraries(manually_labelled ${OpenCV_LIBS})
    target_link_libraries(castle_data ${OpenCV_LIBS})
    target_link_libraries(evaluation ${OpenCV_LIBS})
+
+
+   target_link_libraries(solvePnP ${OpenCV_LIBS})
 
    if(Boost_FOUND)
       include_directories(${Boost_INCLUDE_DIR})
