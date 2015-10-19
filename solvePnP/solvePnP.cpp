@@ -3,6 +3,7 @@
 #include <tclap/CmdLine.h>
 #include <fstream>
 #include <prettyprint/prettyprint.hpp>
+#include "ImageSeries.hpp"
 
 using namespace cv;
 using namespace std;
@@ -22,7 +23,7 @@ int main(int argc, const char *argv[])
    using TCLAP::CmdLine;
    using TCLAP::ValueArg;
    CmdLine cmd("Useful message", ' ', "0.1");
-   ValueArg<string> images("i", 
+   ValueArg<string> images_arg("i", 
          "image-names",
          "Filenames of all images. Should be given as a path to a\
          file with newline-separated filenames. The first frame must\ 
@@ -30,12 +31,37 @@ int main(int argc, const char *argv[])
          true,
          "n/a",
          "File listing all image filenames");
-   cmd.add(images);
+   cmd.add(images_arg);
 
+   ValueArg<string> correspondences_arg("c", 
+         "correspondences",
+         "Filenames of all files containing the correspondences. Should be given as a path to a\
+         file with newline-separated filenames.\
+         The line i will contain the matches between first frame\
+         and image i from the image file list, excluding the first frame itself.",
+         true,
+         "n/a",
+         "File listing all correspondence filenames");
+
+   cmd.add(correspondences_arg);
    cmd.parse(argc, argv);
 
-   vector<string> image_filenames = getLinesFromFile(images.getValue(), [](string s){ return (bool)s.length(); });
+   vector<string> image_filenames = getLinesFromFile(images_arg.getValue(), [](string s){ return (bool)s.length(); });
    cout << image_filenames << endl;
+   if (image_filenames.size() <= 3)
+   {
+      cerr << "Error. Must be at least 4 files." << endl;
+      return -1;
+   }
+
+   try
+   {
+      ImageSeries series(imread(image_filenames[0]), imread(image_filenames[1]), imread(image_filenames.back()));
+   } catch (std::exception& e)
+   {
+      cerr << "Caught exception: " << e.what() << endl;
+      return -2;
+   }
 
    return 0;
 }
