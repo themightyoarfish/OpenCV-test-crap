@@ -56,7 +56,15 @@ int main(int argc, const char *argv[])
 
    try
    {
-      ImageSeries series(imread(image_filenames[0]), imread(image_filenames[1]), imread(image_filenames.back()));
+      ImageSeries series(
+            imread(image_filenames[0]), 
+            imread(image_filenames[1]),
+            imread(image_filenames.back())
+            );
+      for (auto iter = image_filenames.begin() + 2; iter != image_filenames.end() - 1; iter++) 
+      {
+         series.add_image(imread(*iter));
+      }
    } catch (std::exception& e)
    {
       cerr << "Caught exception: " << e.what() << endl;

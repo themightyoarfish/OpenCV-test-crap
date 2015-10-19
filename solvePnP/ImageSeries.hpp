@@ -16,7 +16,8 @@ class ImageSeries
    cv::Mat& first_frame(void);
    cv::Mat& second_frame(void);
    cv::Mat& reference_frame(void);
-   const std::vector<cv::Mat>& frames(void);
+   const std::vector<cv::Mat> frames(void);
+   void add_image(cv::Mat img);
    void set_images(std::vector<cv::Mat> imgs);
 };
 #endif
