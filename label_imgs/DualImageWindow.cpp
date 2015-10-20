@@ -2,6 +2,11 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
+using std::string;
+using std::vector;
+using std::pair;
+using cv::Mat;
+using cv::Point2i;
 
 static const int ESC = 27; // ascii of escape key
 
@@ -10,12 +15,21 @@ namespace imagelabeling
    using namespace cv;
    using std::cout;
    using std::endl;
-   DualImageWindow::DualImageWindow(const Mat left_img, const Mat right_img, const string window_name)
+   DualImageWindow::DualImageWindow(const Mat left_img, const Mat right_img, vector<PointPair> initial_points, const string window_name)
    {
       this->left_img = left_img;
       this->right_img = right_img;
       this->window_name = window_name;
       firstPointSet = false;
+      if (!initial_points.empty())
+      {
+         std::for_each(initial_points.begin(), initial_points.end(), 
+               [this] (PointPair p) 
+               { 
+                  (this->correspondences).push_back(p.first);
+                  (this->correspondences).push_back(p.second); 
+               });
+      }
    }
    DualImageWindow::~DualImageWindow()
    {

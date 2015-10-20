@@ -27,7 +27,7 @@ int main(int argc, const char *argv[])
          "image-names",
          "Filenames of all images. Should be given as a path to a\
          file with newline-separated filenames. The first frame must\ 
-         come first, the second frame second, the reference frame last.",
+         come first, the second frame second, the reference frame third.",
          true,
          "n/a",
          "File listing all image filenames");
