@@ -47,7 +47,12 @@ int main(int argc, const char *argv[])
    cmd.parse(argc, argv);
 
    vector<string> image_filenames = getLinesFromFile(images_arg.getValue(), [](string s){ return (bool)s.length(); });
-   cout << image_filenames << endl;
+   vector<string> correspondence_filenames = getLinesFromFile(correspondences_arg.getValue());
+   if (image_filenames.size() != correspondence_filenames.size() + 1) 
+   {
+      cerr << "There must be one less correspondence filename than there are image file names." << endl;
+      return -2;
+   }
    if (image_filenames.size() <= 3)
    {
       cerr << "Error. Must be at least 4 files." << endl;
