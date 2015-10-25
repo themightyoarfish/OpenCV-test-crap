@@ -4,6 +4,7 @@
 #include <fstream>
 #include <prettyprint/prettyprint.hpp>
 #include "ImageSeries.hpp"
+#include "serialization.hpp"
 
 using namespace cv;
 using namespace std;
@@ -27,7 +28,7 @@ int main(int argc, const char *argv[])
          "image-names",
          "Filenames of all images. Should be given as a path to a\
          file with newline-separated filenames. The first frame must\ 
-         come first, the second frame second, the reference frame last.",
+         come first, the second frame second, the reference frame third.",
          true,
          "n/a",
          "File listing all image filenames");
@@ -66,6 +67,10 @@ int main(int argc, const char *argv[])
             imread(image_filenames[1]),
             imread(image_filenames.back())
             );
+      /* auto c = deserialize_vector() */
+      std::cout << correspondence_filenames[0] << std::endl;
+      std::cout << correspondence_filenames[1] << std::endl;
+      std::cout << correspondence_filenames[2] << std::endl;
       for (auto iter = image_filenames.begin() + 2; iter != image_filenames.end() - 1; iter++) 
       {
          series.add_image(imread(*iter));

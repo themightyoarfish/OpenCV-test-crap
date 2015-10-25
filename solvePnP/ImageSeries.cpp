@@ -55,7 +55,7 @@ void ImageSeries::add_correspondences(ImageRole role, CorrVec v)
 }
 void ImageSeries::add_correspondences(int index, CorrVec v)
 {
-   if (index +3 > images.size()) 
+   if (index + 3 > images.size()) 
    {
       correspondences[index] = v;
    } else throw out_of_range("There is no such intermediate image.");
