@@ -1,6 +1,6 @@
 /Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/first_frame_centered.JPG
 /Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/2.JPG
+/Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/ref_corrected.JPG
 /Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/3.JPG
 /Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/4.JPG
 /Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/5.JPG
-/Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/Data/Bahnhof/ref_corrected.JPG
