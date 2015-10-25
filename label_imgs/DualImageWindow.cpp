@@ -89,7 +89,7 @@ namespace imagelabeling
          default:
             return true;
       }
-      return key == ESC;
+      return key != ESC;
    }
    void DualImageWindow::mouseCallback(int event, int x, int y, int flags, void* data)
    {
