@@ -6,6 +6,7 @@
 #include "serialization.hpp"
 
 using std::cout;
+using std::cin;
 using std::cerr;
 using std::endl;
 using std::string;
@@ -16,6 +17,17 @@ using std::ios;
 using boost::filesystem::path;
 using namespace imagelabeling;
 using namespace cv;
+
+bool confirm_action(const string& prompt)
+{
+   char response;
+   do {
+      cout << prompt << " [y/n] ";
+      cout.flush();
+      cin >> response;
+   } while (response != 'y' && response != 'n');
+   return response == 'y';
+}
 
 vector<pair<Point2i,Point2i>> label_images(const Mat& left, const Mat& right, const string& initial_pts = "")
 {
@@ -86,6 +98,15 @@ int main(int argc, const char *argv[])
       return -2;
    }
    auto points = label_images(left, right, initial_pts_file);
-   if (!points.empty()) serialize_vector(points, out_fname);
+   path out_path(out_fname);
+   if (!points.empty())
+   {
+      if (boost::filesystem::exists(out_path))
+      {
+         if (confirm_action("File already exists. Overwrite?")) serialize_vector(points, out_fname);
+      }
+      else serialize_vector(points, out_fname);
+
+   }
    return 0;
 }
