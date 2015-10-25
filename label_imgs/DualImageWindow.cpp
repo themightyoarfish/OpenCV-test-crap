@@ -46,8 +46,13 @@ namespace imagelabeling
    void DualImageWindow::refresh()
    {
       combine_imgs(left_img, right_img);
+      int c = 0;
       for (auto iter = correspondences.begin() ; iter != correspondences.end() ; iter++)
-         circle(combined_imgs, *iter, 8, Scalar(0,0,255), 2);
+      {
+         Point2i p = (c % 2 == 0) ? *iter : Point2i(iter->x + left_img.cols, iter->y);
+         circle(combined_imgs, p, 8, Scalar(0,0,255), 2);
+         c++;
+      }
       imshow(window_name, combined_imgs);
    }
    vector<pair<Point2i,Point2i>> DualImageWindow::points()
@@ -84,11 +89,7 @@ namespace imagelabeling
          default:
             return true;
       }
-      if(key == ESC) return false;
-      else
-      {
-         return true;
-      }
+      return key == ESC;
    }
    void DualImageWindow::mouseCallback(int event, int x, int y, int flags, void* data)
    {
@@ -105,6 +106,7 @@ namespace imagelabeling
                   {
                      if (x >= self->left_img.cols) 
                      {
+                        x -= self->left_img.cols; // assume images have equal dimensions and are side by side
                         self->correspondences.push_back(Point2i(x,y));
                         cout << "Circle at " << Point2i(x,y) << endl;
                         self->firstPointSet = false;

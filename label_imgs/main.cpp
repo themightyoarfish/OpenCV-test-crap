@@ -104,8 +104,7 @@ int main(int argc, const char *argv[])
       if (boost::filesystem::exists(out_path))
       {
          if (confirm_action("File already exists. Overwrite?")) serialize_vector(points, out_fname);
-      }
-      else serialize_vector(points, out_fname);
+      } else serialize_vector(points, out_fname);
 
    }
    return 0;
