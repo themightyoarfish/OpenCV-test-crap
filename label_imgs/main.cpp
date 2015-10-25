@@ -1,6 +1,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
 #include <boost/filesystem.hpp>
+#include <tclap/CmdLine.h>
 #include "DualImageWindow.hpp"
 #include "serialization.hpp"
 
@@ -16,36 +17,75 @@ using boost::filesystem::path;
 using namespace imagelabeling;
 using namespace cv;
 
-vector<pair<Point2i,Point2i>> label_images(const Mat& left, const Mat& right)
+vector<pair<Point2i,Point2i>> label_images(const Mat& left, const Mat& right, const string& initial_pts = "")
 {
-   DualImageWindow window(left, right);
+   DualImageWindow window(left, right, initial_pts.empty() ? vector<PointPair>() : deserialize_vector<Point2i,Point2i>(initial_pts));
    window.show();
    return window.points();
 }
 
 int main(int argc, const char *argv[])
 {
-   if (argc < 3) 
-   {
-      cerr << "Gief two imgs pls." << endl;
-      return -1;
-   }
-   path path_left(argv[1]), path_right(argv[2]);
-   string fname = argc >= 4 ? fname = string(argv[3]) : path_left.filename().string() 
-                                                      + "->" 
-                                                      + path_right.filename().string() 
-                                                      + "_pts";
-   Mat left = imread(argv[1]);
-   Mat right = imread(argv[2]);
+   using TCLAP::CmdLine;
+   using TCLAP::ValueArg;
+   CmdLine cmd("", ' ', "0.1");
+   ValueArg<string> left_img_arg(
+         "l", "left-image",
+         "An image file with a common format (one understood by OpenCV)",
+         true,
+         "n/a",
+         "file"
+         );
+   ValueArg<string> right_img_arg(
+         "r", "right-image",
+         "An image file with a common format (one understood by OpenCV)",
+         true,
+         "n/a",
+         "file"
+         );
+   cmd.add(left_img_arg);
+   cmd.add(right_img_arg);
+
+   ValueArg<string> output_arg(
+         "o", "output",
+         "The file to which the corresponding points will be serialized. They can be read back with deserialize_vector() from serialization.hpp",
+         false,
+         "",
+         "file"
+         );
+   cmd.add(output_arg);
+
+   ValueArg<string> correspondence_arg(
+         "c",
+         "correspondences",
+         "File with correspondences between the two images. This can be used to prepopulate the display and update correspondences. The file must have the format used by serialize_vector from serialization.hpp",
+         false,
+         "",
+         "file"
+         );
+   cmd.add(correspondence_arg);
+
+   cmd.parse(argc, argv);
+
+   path path_left(left_img_arg.getValue()), path_right(right_img_arg.getValue());
+   string initial_pts_file = correspondence_arg.getValue();
+   string out_fname = output_arg.getValue();
+
+   if (out_fname.empty())
+      out_fname = path_left.filename().string() 
+         + "->" 
+         + path_right.filename().string() 
+         + "_pts";
+
+
+   Mat left = imread(path_left.string());
+   Mat right = imread(path_right.string());
    if (!left.data || !right.data) 
    {
       cerr << "Failed to read at least one image." << endl;
       return -2;
    }
-   auto points = label_images(left, right);
-   serialize_vector(points, fname);
-   points = deserialize_vector<Point2i,Point2i>(fname);
-   for (auto iter = points.begin() ; iter != points.end() ; iter++)
-      cout << "(" << iter->first << "," << iter->second << ")"<< endl;
+   auto points = label_images(left, right, initial_pts_file);
+   if (!points.empty()) serialize_vector(points, out_fname);
    return 0;
 }
