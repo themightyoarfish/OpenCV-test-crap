@@ -41,6 +41,7 @@ flags = [
 '-Wno-long-long',
 '-Wno-variadic-macros',
 '-fexceptions',
+'-Wno-sign-compare',
 '-DNDEBUG',
 # You 100% do NOT need -DUSE_CLANG_COMPLETER in your flags; only the YCM
 # source code needs it.
@@ -80,7 +81,22 @@ flags = [
 './tests/gmock',
 '-isystem',
 './tests/gmock/include',
+'-I',
 '/opt/local/include',
+'-I',
+"/Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/label_imgs",
+'-isystem',
+'/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/c++/v1',
+'-isystem',
+ '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1',
+'-isystem',
+ '/usr/local/include',
+'-isystem',
+ '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/include',
+'-isystem',
+ '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include',
+'-isystem',
+ '/usr/include'
 ]
 
 

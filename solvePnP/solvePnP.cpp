@@ -27,7 +27,7 @@ int main(int argc, const char *argv[])
    ValueArg<string> images_arg("i", 
          "image-names",
          "Filenames of all images. Should be given as a path to a\
-         file with newline-separated filenames. The first frame must\ 
+         file with newline-separated filenames. The first frame must\
          come first, the second frame second, the reference frame third.",
          true,
          "n/a",
@@ -38,7 +38,7 @@ int main(int argc, const char *argv[])
          "correspondences",
          "Filenames of all files containing the correspondences. Should be given as a path to a\
          file with newline-separated filenames.\
-         The line i will contain the matches between first frame\
+         The line i will contain the filename for matches between first frame\
          and image i from the image file list, excluding the first frame itself.",
          true,
          "n/a",
@@ -65,15 +65,28 @@ int main(int argc, const char *argv[])
       ImageSeries series(
             imread(image_filenames[0]), 
             imread(image_filenames[1]),
-            imread(image_filenames.back())
+            imread(image_filenames[2])
             );
-      /* auto c = deserialize_vector() */
-      std::cout << correspondence_filenames[0] << std::endl;
-      std::cout << correspondence_filenames[1] << std::endl;
-      std::cout << correspondence_filenames[2] << std::endl;
-      for (auto iter = image_filenames.begin() + 2; iter != image_filenames.end() - 1; iter++) 
+      for (auto iter = image_filenames.begin() + 3; iter != image_filenames.end(); iter++) 
       {
+         std::cout << "Adding image " << *iter << std::endl;
          series.add_image(imread(*iter));
+      }
+      for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
+      {
+          CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
+          std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
+          switch (i)
+          {
+             case 0:
+                series.add_correspondences(ImageSeries::SECOND_FRAME, corr); break;
+             case 1:
+                series.add_correspondences(ImageSeries::REF_FRAME, corr); break;
+             default:
+                series.add_correspondences(i-2, corr); break;
+                break;
+                
+          }
       }
    } catch (std::exception& e)
    {

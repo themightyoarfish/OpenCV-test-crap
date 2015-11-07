@@ -15,7 +15,7 @@ using std::string;
 
 template<typename T1, typename T2> void serialize_vector(const vector<pair<T1,T2>>& vec, string filename)
 {
-   ofstream out_file(filename, ios::binary);
+   ofstream out_file(filename, ios::binary); // this isnt really binary. For binary r/w, use read/write methods
    if (out_file.is_open() && out_file.good())
    {
       out_file << vec.size();
