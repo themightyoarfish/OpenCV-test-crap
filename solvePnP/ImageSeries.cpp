@@ -59,7 +59,6 @@ ImageSeries::ImageSeries(Mat&& first_frame, Mat&& second_frame, Mat&& reference,
    mCorrespondences = std::vector<CorrVec>(3);
    mCameraMatrix = camera_matrix;
    mDistCoeffs = dist_coeffs;
-   std::cout << mCameraMatrix << std::endl;
 }
 
 ImageSeries::ImageSeries(vector<Mat> mats)
