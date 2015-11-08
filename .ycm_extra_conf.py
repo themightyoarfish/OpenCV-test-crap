@@ -85,6 +85,8 @@ flags = [
 '/opt/local/include',
 '-I',
 "/Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/label_imgs",
+'-I',
+"/Users/Rasmus/Documents/Uni/Bachelor/Semester 8/Bachelor's Thesis/OpenCVTest/calibration",
 '-isystem',
 '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/c++/v1',
 '-isystem',
