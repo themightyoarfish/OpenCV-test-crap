@@ -5,6 +5,7 @@
 #include <prettyprint/prettyprint.hpp>
 #include "ImageSeries.hpp"
 #include "serialization.hpp"
+#include "CalibrationFileReader.h"
 
 using namespace cv;
 using namespace std;
@@ -43,10 +44,20 @@ int main(int argc, const char *argv[])
          true,
          "n/a",
          "File listing all correspondence filenames");
-
    cmd.add(correspondences_arg);
+
+   ValueArg<string> calibration_arg("d",
+         "calibration-data",
+         "Filename of an OpenCV XML storage file with 'Camera_Matrix' and 'Distortion_Coefficients' nodes.",
+         false,
+         "n/a",
+         "Calibration data file"
+         );
+   cmd.add(calibration_arg);
+
    cmd.parse(argc, argv);
 
+   CalibrationFileReader reader(calibration_arg.getValue());
    vector<string> image_filenames = getLinesFromFile(images_arg.getValue(), [](string s){ return (bool)s.length(); });
    vector<string> correspondence_filenames = getLinesFromFile(correspondences_arg.getValue());
    if (image_filenames.size() != correspondence_filenames.size() + 1) 
@@ -65,8 +76,13 @@ int main(int argc, const char *argv[])
       ImageSeries series(
             imread(image_filenames[0]), 
             imread(image_filenames[1]),
-            imread(image_filenames[2])
+            imread(image_filenames[2]),
+            reader.getCameraMatrix(),
+            reader.getDistortionCoeffs()
             );
+      std::cout << "Addding image " << image_filenames[0] << std::endl;
+      std::cout << "Addding image " << image_filenames[1] << std::endl;
+      std::cout << "Addding image " << image_filenames[2] << std::endl;
       for (auto iter = image_filenames.begin() + 3; iter != image_filenames.end(); iter++) 
       {
          std::cout << "Adding image " << *iter << std::endl;

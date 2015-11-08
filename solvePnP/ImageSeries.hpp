@@ -6,6 +6,9 @@
 
 typedef std::vector<std::pair<cv::Point2i,cv::Point2i>> CorrVec;
 
+static double cam_mat_data[] = {1.,0.,0.,0.,1.,0.,0.,0.,1.};
+static cv::Mat default_cam_mat(3,3, CV_64FC1, cam_mat_data);
+
 class ImageSeries
 {
    public:
@@ -17,13 +20,16 @@ class ImageSeries
       };
 
    private:
-      std::vector<cv::Mat> images;
-      std::vector<CorrVec> correspondences;
+      std::vector<cv::Mat> mImages;
+      std::vector<CorrVec> mCorrespondences;
+      cv::Mat mCameraMatrix;
+      cv::Mat mDistCoeffs;
       static void sortPoints(CorrVec& v);
       void showMatches(unsigned int indexl, unsigned int indexr, CorrVec& v);
 
    public:
-      ImageSeries(cv::Mat&& first_frame, cv::Mat&& second_frame, cv::Mat&& reference);
+      ImageSeries(cv::Mat&& first_frame, cv::Mat&& second_frame, cv::Mat&& reference, 
+            cv::Mat&& camera_matrix = std::move(default_cam_mat), cv::Mat&& dist_coeffs=cv::Mat(1,5,0));
       ImageSeries(std::vector<cv::Mat> mats);
       cv::Mat& first_frame(void);
       cv::Mat& second_frame(void);
