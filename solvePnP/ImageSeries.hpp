@@ -8,6 +8,8 @@ typedef std::vector<std::pair<cv::Point2i,cv::Point2i>> CorrVec;
 
 static double cam_mat_data[] = {1.,0.,0.,0.,1.,0.,0.,0.,1.};
 static cv::Mat default_cam_mat(3,3, CV_64FC1, cam_mat_data);
+void convertToKeypoints(CorrVec& v, std::vector<cv::KeyPoint>& kpts1, std::vector<cv::KeyPoint>& kpts2, 
+      float size = 10, float angle = -1, float response = 0, int octave = 0, int classid = -1);
 
 class ImageSeries
 {
@@ -25,7 +27,6 @@ class ImageSeries
       cv::Mat mCameraMatrix;
       cv::Mat mDistCoeffs;
       static void sortPoints(CorrVec& v);
-      void showMatches(unsigned int indexl, unsigned int indexr, CorrVec& v);
 
    public:
       ImageSeries(cv::Mat&& first_frame, cv::Mat&& second_frame, cv::Mat&& reference, 
@@ -43,5 +44,9 @@ class ImageSeries
       CorrVec& correspondences_for_frame(ImageRole role);
       CorrVec& correspondences_for_frame(unsigned int index);
       void set_images(std::vector<cv::Mat> imgs);
+      cv::Mat& camera_matrix();
+      cv::Mat& dist_coeffs();
+      /** TODO: MAKE PRIVATE **/
+      void showMatches(unsigned int indexl, unsigned int indexr, CorrVec& v);
 };
 #endif

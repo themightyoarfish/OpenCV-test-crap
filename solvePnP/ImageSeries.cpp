@@ -4,8 +4,8 @@
 using namespace std;
 using namespace cv;
 
-static void convertToKeypoints(CorrVec& v, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2, 
-      float size = 10, float angle = -1, float response = 0, int octave = 0, int classid = -1)
+void convertToKeypoints(CorrVec& v, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2, 
+      float size, float angle, float response, int octave, int classid)
 {
    unsigned int i = 0;
    for (auto iter = v.begin(); iter != v.end(); iter++, i++) 
@@ -30,7 +30,7 @@ void ImageSeries::sortPoints(CorrVec& v)
 }
 
 void ImageSeries::showMatches(unsigned int indexl, unsigned int indexr, CorrVec& v)
-{      /* *** Draw the matches for debugging ** */
+{      
       const unsigned int n = v.size();
       vector<KeyPoint> kpts1(n), kpts2(n);
       vector<DMatch> matches(n);
@@ -42,9 +42,6 @@ void ImageSeries::showMatches(unsigned int indexl, unsigned int indexr, CorrVec&
       namedWindow("Foobar", WINDOW_NORMAL);
       imshow("Foobar", matchesImg);
       waitKey(0);
-
-         /* ************************************* */
-
 }
 
 ImageSeries::ImageSeries(Mat&& first_frame, Mat&& second_frame, Mat&& reference,
@@ -113,22 +110,28 @@ void ImageSeries::add_correspondences(ImageRole role, CorrVec v)
 
 void ImageSeries::add_correspondences(unsigned int index, CorrVec v)
 {
-   if (index + 3 <= mImages.size()) 
+   if (index + 3 < mImages.size()) 
    {
       sortPoints(v);
-      /* showMatches(0,index+3,v); */
-      mCorrespondences[index] = v;
+      if (index + 3 >= mCorrespondences.size())
+      {
+         mCorrespondences.resize(index + 3 + 1);
+      }
+      mCorrespondences[index + 3] = v;
+      /* showMatches(0,index+3,mCorrespondences[index + 3]); */
    } else throw out_of_range("There is no such intermediate image.");
+   std::cout << "Added cores. Size is " << mCorrespondences.size() << std::endl;
 }
 
 CorrVec& ImageSeries::correspondences_for_frame(ImageRole role)
 {
-   return correspondences_for_frame((unsigned int)role - 3);
+   if (mCorrespondences.size() > (unsigned int)role) return mCorrespondences[role];
+   else throw out_of_range("There are no correspondences for this role.");
 }
 
-CorrVec& ImageSeries::correspondences_for_frame(unsigned index)
+CorrVec& ImageSeries::correspondences_for_frame(unsigned int index)
 {
-   if (index + 3 <= mCorrespondences.size())
+   if (index + 3 < mCorrespondences.size())
    {
       return mCorrespondences[index + 3];
    } else throw out_of_range("There is no such correspondence vector.");
@@ -139,4 +142,11 @@ cv::Mat& ImageSeries::image_for_index(unsigned int index)
    if (index + 3 <= mImages.size()) return mImages[index + 3];
    else throw out_of_range("No such image.");
 }
-
+cv::Mat& ImageSeries::camera_matrix()
+{
+   return mCameraMatrix;
+}
+cv::Mat& ImageSeries::dist_coeffs()
+{
+   return mDistCoeffs;
+}
