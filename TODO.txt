@@ -1,0 +1,19 @@
+3D-Koordinaten der Szene mit first und second frame berechnen.
+
+Mit solvePnP die relative Pose zwischen dem Objektkoordinatensystem (identisch
+mit dem first frame) und dem reference frame berechnen 
+   -> Dafür sind 3D-2D-Korrespondenzen nötig
+   -> R_first_ref, t_first_ref
+
+Mit solvePnP relative Pose zwischen first und current frame berechnen
+   -> R_first_current, t_first_current
+
+Berechne R_current_ref und t_current_ref mittels
+   
+   R_current_ref = -R_first_ref * R_first_current^T * t_first_current + t_first_ref
+
+   R_current_ref = R_first_ref * R_first_current^T
+
+Die Skalierung muss nicht mehr selbst gehandhabt werden, da sie über die
+Entfernung der Punkte zum first frame implizit festgelegt ist.
+

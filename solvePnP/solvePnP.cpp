@@ -6,6 +6,7 @@
 #include "ImageSeries.hpp"
 #include "serialization.hpp"
 #include "CalibrationFileReader.h"
+#include "utils.h"
 
 using namespace cv;
 using namespace std;
@@ -101,8 +102,14 @@ int main(int argc, const char *argv[])
              default:
                 series.add_correspondences(i-2, corr); break;
                 break;
-                
           }
+      }
+      std::cout << "Starting estimation..." << std::endl;
+      vector<PoseData> poses = runEstimate(series);
+      for (auto& i : poses)
+      {
+         cout << "R: " << rotationMatToEuler(i.R) << endl;
+         cout << "t: " << i.t << endl;
       }
    } catch (std::exception& e)
    {

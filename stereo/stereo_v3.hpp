@@ -39,9 +39,9 @@ typedef struct
 
 typedef struct 
 {
-   char* left_image_name = "n/a";
-   char* right_image_name = "n/a";
-   char* calib_file_name = "n/a";
+   const char* left_image_name = "n/a";
+   const char* right_image_name = "n/a";
+   const char* calib_file_name = "n/a";
    bool use_ratio_test = false;
    bool draw_matches = false;
    float ratio = 0.8;
