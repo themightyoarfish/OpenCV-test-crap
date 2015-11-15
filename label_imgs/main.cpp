@@ -29,9 +29,9 @@ bool confirm_action(const string& prompt)
    return response == 'y';
 }
 
-vector<pair<Point2i,Point2i>> label_images(const Mat& left, const Mat& right, const string& initial_pts = "")
+vector<pair<Point2i,Point2i>> label_images(const Mat& left, const Mat& right, const string& window_name, const string& initial_pts = "")
 {
-   DualImageWindow window(left, right, initial_pts.empty() ? vector<PointPair>() : deserialize_vector<Point2i,Point2i>(initial_pts));
+   DualImageWindow window(left, right, initial_pts.empty() ? vector<PointPair>() : deserialize_vector<Point2i,Point2i>(initial_pts), window_name);
    window.show();
    return window.points();
 }
@@ -97,7 +97,7 @@ int main(int argc, const char *argv[])
       cerr << "Failed to read at least one image." << endl;
       return -2;
    }
-   auto points = label_images(left, right, initial_pts_file);
+   auto points = label_images(left, right, path_left.filename().string() + " -> " + path_right.filename().string(), initial_pts_file);
    path out_path(out_fname);
    if (!points.empty())
    {
