@@ -9,6 +9,7 @@ find_package(Boost REQUIRED filesystem system)
 
 if(OpenCV_FOUND)
    include_directories(${OpenCV_INCLUDE_DIRS})
+   include_directories(".")
    include_directories("stereo")
    include_directories("calibration")
    include_directories("triangulate")
