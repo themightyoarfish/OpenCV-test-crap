@@ -6,7 +6,7 @@ using namespace std;
 using namespace cv;
 
 static int length_filenames = 7;
-static char* filenames[] = {
+static const char* filenames[] = {
    "/Users/Rasmus/Desktop/Set6/1.jpg",
    "/Users/Rasmus/Desktop/Set6/2.jpg",
    "/Users/Rasmus/Desktop/Set6/3.jpg",
