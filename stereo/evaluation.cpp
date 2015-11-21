@@ -390,6 +390,12 @@ int main(int argc, char *argv[])
 #else
          sprintf(datafilename, "gut_rosenkrantz_detector_%s_resize_%d_ratio_%lf.dat", "KAZE", args.resize_factor, args.ratio);
 #endif
+      case DETECTOR_SURF:
+#ifdef BAHNHOF
+         sprintf(datafilename, "bahnhof_detector_%s_resize_%d_ratio_%lf.dat", "SURF", args.resize_factor, args.ratio);
+#else
+         sprintf(datafilename, "gut_rosenkrantz_detector_%s_resize_%d_ratio_%lf.dat", "SURF", args.resize_factor, args.ratio);
+#endif
          break;
    }
    ofstream datafile(datafilename);
