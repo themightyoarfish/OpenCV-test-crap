@@ -25,6 +25,7 @@ int main(int argc, const char *argv[])
 {
    using TCLAP::CmdLine;
    using TCLAP::ValueArg;
+   using TCLAP::SwitchArg;
    CmdLine cmd("Useful message", ' ', "0.1");
    ValueArg<string> images_arg("i", 
          "image-names",
@@ -56,10 +57,20 @@ int main(int argc, const char *argv[])
          );
    cmd.add(calibration_arg);
 
+   SwitchArg interactive_arg("s",
+         "show-matches",
+         "Flag to indicate whether the matches between each pair of images should be shown.",
+         false
+         );
+   cmd.add(interactive_arg);
+
    cmd.parse(argc, argv);
 
    CalibrationFileReader reader(calibration_arg.getValue());
-   vector<string> image_filenames = getLinesFromFile(images_arg.getValue(), [](string s){ return (bool)s.length(); });
+   vector<string> image_filenames = getLinesFromFile(
+         images_arg.getValue(),
+         [](string s){ return (bool)s.length(); /* remove empty lines */}
+         );
    vector<string> correspondence_filenames = getLinesFromFile(correspondences_arg.getValue());
    if (image_filenames.size() != correspondence_filenames.size() + 1) 
    {
@@ -91,21 +102,21 @@ int main(int argc, const char *argv[])
       }
       for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
       {
-          CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
-          std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
-          switch (i)
-          {
-             case 0:
-                series.add_correspondences(ImageSeries::SECOND_FRAME, corr); break;
-             case 1:
-                series.add_correspondences(ImageSeries::REF_FRAME, corr); break;
-             default:
-                series.add_correspondences(i-2, corr); break;
-                break;
-          }
+         CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
+         std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
+         switch (i)
+         {
+            case 0:
+               series.add_correspondences(ImageSeries::SECOND_FRAME, corr); break;
+            case 1:
+               series.add_correspondences(ImageSeries::REF_FRAME, corr); break;
+            default:
+               series.add_correspondences(i-2, corr); break;
+               break;
+         }
       }
       std::cout << "Starting estimation..." << std::endl;
-      vector<PoseData> poses = runEstimate(series);
+      vector<PoseData> poses = runEstimate(series, interactive_arg.getValue());
       for (auto& i : poses)
       {
          cout << "R: " << rotationMatToEuler(i.R) << endl;
