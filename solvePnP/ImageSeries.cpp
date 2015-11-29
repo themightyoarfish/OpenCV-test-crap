@@ -1,35 +1,117 @@
-#include <stdexcept>
 #include "ImageSeries.hpp"
+#include <algorithm>
+#include <stdexcept>
+#include <opencv2/features2d.hpp>
 
 using namespace std;
 using namespace cv;
 
-vector<PoseData> runEstimate(const ImageSeries& series, bool interactive)
+std::tuple<vector<Point2f>, vector<Point2f>> matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
 {
-   const CorrVec& corr_first_second = series.correspondences_for_frame(ImageSeries::SECOND_FRAME);
-   const CorrVec& corr_first_ref = series.correspondences_for_frame(ImageSeries::REF_FRAME);
-   const unsigned int n = corr_first_second.size();
-   vector<KeyPoint> kpts_first(n), kpts_second(n), kpts_ref(n);
-   vector<Point2f> pts_first(n), pts_second(n), pts_ref(n);
-   convertToKeypoints(corr_first_second, kpts_first, kpts_second);
-   convertToKeypoints(corr_first_ref, kpts_first, kpts_ref);
-   for (unsigned int i = 0; i < n; ++i) 
+   const int N = matches.size();
+   vector<Point2f> imgpts1(N), imgpts2(N);
+   for(unsigned int i = 0; i < N; i++) 
    {
-      pts_first[i] = kpts_first[i].pt;
-      pts_second[i] = kpts_second[i].pt;
-      pts_ref[i] = kpts_ref[i].pt;
+      imgpts1[i] = kpts1[matches[i].queryIdx].pt; 
+      imgpts2[i] = kpts2[matches[i].trainIdx].pt; 
    }
-   Mat camera_matrix = series.camera_matrix();
+   return std::make_tuple(imgpts1, imgpts2);
+}
+
+vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsigned int resize_factor, bool autofeatures)
+{
+
+   auto scale_pt = [](Point2f& p, float factor) { return p * factor; };
+   unsigned int n;
+   vector<KeyPoint> kpts_first, kpts_second, kpts_ref;
+   vector<Point2f>  pts_first_all,  // all ff kpts converted to points
+      pts_second, pts_ref, // all 2nd and ref frame kpts with matches in ff
+      pts_first_for_second, // first frame kpts with matches in 2nd
+      pts_first_for_ref;  // first frame kpts with matches in ref
+      
+   if (not autofeatures)
+   {
+      const CorrVec& corr_first_second = series.correspondences_for_frame(ImageSeries::SECOND_FRAME);
+      const CorrVec& corr_first_ref    = series.correspondences_for_frame(ImageSeries::REF_FRAME);
+      n                                = corr_first_second.size();
+      convertToKeypoints(corr_first_second, kpts_first, kpts_second);
+      convertToKeypoints(corr_first_ref   , kpts_first, kpts_ref);
+      for (unsigned int i = 0; i < n; ++i) 
+      {
+         pts_first_all.push_back(kpts_first[i].pt);
+         pts_second.push_back(kpts_second[i].pt);
+         pts_ref.push_back(kpts_ref[i].pt);
+      }
+      pts_first_for_second = pts_first_all;
+      pts_first_for_ref    = pts_first_all;
+
+   } else 
+   {
+      Mat descriptors_first, descriptors_second, descriptors_ref;
+      Ptr<Feature2D> detector;
+      detector = AKAZE::create();
+      Mat first_frame, second_frame, reference_frame;
+
+      resize(series.first_frame(),      first_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
+      resize(series.second_frame(),     second_frame,     Size(),  1. / resize_factor,  1. / resize_factor);
+      resize(series.reference_frame(),  reference_frame,  Size(),  1. / resize_factor,  1. / resize_factor);
+
+      detector->detectAndCompute(first_frame,      noArray(),  kpts_first,   descriptors_first);
+      detector->detectAndCompute(second_frame,     noArray(),  kpts_second,  descriptors_second);
+      detector->detectAndCompute(reference_frame,  noArray(),  kpts_ref,     descriptors_ref);
+
+      n = kpts_first.size();
+      std::transform(kpts_first.begin(), kpts_first.end(), pts_first_all.begin(), [&](KeyPoint& k) { return k.pt; });
+
+      const float RATIO = 0.8;
+      
+      BFMatcher matcher;
+      vector<DMatch> matches_first_second, matches_first_ref; // when autodetecting, hold the matches
+      vector<vector<DMatch>>  candidates_first_second,  candidates_first_ref;
+      matcher = BFMatcher(NORM_HAMMING);
+      matcher.knnMatch(descriptors_first, descriptors_second, candidates_first_second, 2);
+      matcher.knnMatch(descriptors_first, descriptors_ref   , candidates_first_ref   , 2);
+
+      for (int i = 0; i < candidates_first_second.size(); i++)
+      {
+         DMatch& m1 = candidates_first_second[i][0];
+         DMatch& m2 = candidates_first_second[i][1];
+         if (m1.distance < RATIO * m2.distance)
+            matches_first_second.push_back(m1);
+      }
+      for (int i = 0; i < candidates_first_ref.size(); i++)
+      {
+         DMatch& m1 = candidates_first_ref[i][0];
+         DMatch& m2 = candidates_first_ref[i][1];
+         if (m1.distance < RATIO * m2.distance)
+            matches_first_ref.push_back(m1);
+      }
+
+      std::tie(pts_first_for_second, pts_second) = matches_to_points(matches_first_second, kpts_first, kpts_second);
+      std::tie(pts_first_for_ref, pts_ref)       = matches_to_points(matches_first_ref   , kpts_first, kpts_ref);
+
+      if (resize_factor > 1)
+      {
+         auto scale_pt_up = [&](Point2f& p) { return p * (float)resize_factor; };
+         std::transform(pts_first_all.begin()       , pts_first_all.end()       , pts_first_all.begin()       , scale_pt_up);
+         std::transform(pts_first_for_second.begin(), pts_first_for_second.end(), pts_first_for_second.begin(), scale_pt_up);
+         std::transform(pts_first_for_ref.begin()   , pts_first_for_ref.end()   , pts_first_for_ref.begin()   , scale_pt_up);
+         std::transform(pts_second.begin()          , pts_second.end()          , pts_second.begin()          , scale_pt_up);
+         std::transform(pts_ref.begin()             , pts_ref.end()             , pts_ref.begin()             , scale_pt_up);
+      }
+   }
+
+   Mat_<double> camera_matrix = series.camera_matrix();
    Mat dist_coeffs = series.dist_coeffs();
 
-   double focal = camera_matrix.at<double>(0,0);
-   Point2d principalPoint(camera_matrix.at<double>(0,2),camera_matrix.at<double>(1,2));
+   double focal = camera_matrix(0,0);
+   Point2d principalPoint(camera_matrix(0,2), camera_matrix(1,2));
 
    Mat mask;
-   Mat E = findEssentialMat(pts_first, pts_second, focal, principalPoint, RANSAC, 0.999, 1, mask);
+   Mat E = findEssentialMat(pts_first_for_second, pts_second, focal, principalPoint, RANSAC, 0.999, 1, mask);
 
    Mat R, t;
-   int inliers = recoverPose(E, pts_first, pts_second, R, t, focal, principalPoint, mask);
+   int inliers = recoverPose(E, pts_first_for_second, pts_second, R, t, focal, principalPoint, mask);
    Vec3d angles = rotationMatToEuler(R);
    
    vector<Point2f> pts_first_masked, pts_second_masked, pts_ref_masked;
@@ -94,6 +176,8 @@ void convertToKeypoints(const CorrVec& v, vector<KeyPoint>& kpts1, vector<KeyPoi
       float size, float angle, float response, int octave, int classid)
 {
    unsigned int i = 0;
+   kpts1.resize(v.size());
+   kpts2.resize(v.size());
    for (auto iter = v.begin(); iter != v.end(); iter++, i++) 
    {
       const pair<Point2i,Point2i>& corresp_pts = *iter;
