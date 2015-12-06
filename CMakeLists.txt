@@ -2,7 +2,7 @@ set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -w") 
 set(CMAKE_CXX_FLAGS "-stdlib=libc++ -std=c++11")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wreturn-type")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall")
 find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # manual specification of the OpenCVConfig.cmake path is necessary since otherwise, cmake assigns /opt/local a higher priority and ocv2.4 will be used
 
 find_package(Boost REQUIRED filesystem system)

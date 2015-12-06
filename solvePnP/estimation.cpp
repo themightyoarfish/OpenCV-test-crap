@@ -11,8 +11,6 @@ void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
 {
    vector<KeyPoint> k1(pts1.size()), k2(pts2.size());
    vector<DMatch> matches(pts1.size());
-   std::cout << pts1.size() << std::endl;
-   std::cout << pts2.size() << std::endl;
    for (int i = 0; i < pts1.size(); ++i)
    {
       matches[i] = DMatch(i,i,0);
@@ -33,6 +31,7 @@ vector<Point2f> remove_invalid(vector<Point2f>& v)
       if(p != INVALID_PT) ret.push_back(p);
    return ret;
 }
+
 vector<Point2f> operator& (vector<Point2f>& v, vector<Point2f>& mask)
 {
    if (v.size() != mask.size())
@@ -47,6 +46,7 @@ vector<Point2f> operator& (vector<Point2f>& v, vector<Point2f>& mask)
    }
    return ret;
 }
+
 std::tuple<vector<Point2f>, vector<Point2f>> matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
 {
    const int N = matches.size();
@@ -62,7 +62,7 @@ std::tuple<vector<Point2f>, vector<Point2f>> matches_to_points(vector<DMatch>& m
 vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsigned int resize_factor, bool autofeatures)
 {
 
-   unsigned int n1, n2, nref;
+   unsigned int n;
    auto match_comparator = [](DMatch& m1, DMatch& m2) { return m1.distance < m2.distance; };
    auto scale_pt_up = [&resize_factor](Point2f& p) { return p * (float)resize_factor; };
    vector<KeyPoint> kpts_first, kpts_second, kpts_ref;
@@ -72,97 +72,70 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    Ptr<Feature2D> detector;
    detector = AKAZE::create();
    Mat first_frame, second_frame, reference_frame;
-   const float RATIO = 0.8;
-
-   BFMatcher matcher;
-   if (not autofeatures)
+   if (resize_factor > 1)
    {
-      const CorrVec& corr_first_second = series.correspondences_for_frame(ImageSeries::SECOND_FRAME);
-      const CorrVec& corr_first_ref    = series.correspondences_for_frame(ImageSeries::REF_FRAME);
-      n1 = n2 = nref                   = corr_first_second.size();
-      convertToKeypoints(corr_first_second, kpts_first, kpts_second);
-      convertToKeypoints(corr_first_ref   , kpts_first, kpts_ref);
-      for (unsigned int i = 0; i < n1; ++i) 
-      {
-         pts_first.push_back(kpts_first[i].pt);
-         pts_second.push_back(kpts_second[i].pt);
-         pts_ref.push_back(kpts_ref[i].pt);
-      }
+      resize(series.first_frame(),      first_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
+      resize(series.second_frame(),     second_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
+      resize(series.reference_frame(),  reference_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
    } else 
    {
+      first_frame = series.first_frame();
+      second_frame = series.second_frame();
+      reference_frame = series.reference_frame();
+   }
+   const float RATIO = 0.7;
 
-      resize(series.first_frame(),      first_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
-      resize(series.second_frame(),     second_frame,     Size(),  1. / resize_factor,  1. / resize_factor);
-      resize(series.reference_frame(),  reference_frame,  Size(),  1. / resize_factor,  1. / resize_factor);
+   BFMatcher matcher;
 
-      detector->detectAndCompute(first_frame,      noArray(),  kpts_first,   descriptors_first);
-      detector->detectAndCompute(second_frame,     noArray(),  kpts_second,  descriptors_second);
-      /* detector->detectAndCompute(reference_frame,  noArray(),  kpts_ref,     descriptors_ref); */
+   detector->detectAndCompute(first_frame,      noArray(),  kpts_first,   descriptors_first);
+   detector->detectAndCompute(second_frame,     noArray(),  kpts_second,  descriptors_second);
 
-      n1   = kpts_first.size();
-      n2   = kpts_second.size();
-      nref = kpts_ref.size();
-      pts_first.resize(n1,  Point2f(-1,  -1));
-      pts_second.resize(n1,  Point2f(-1,  -1));
-      pts_ref.resize(n1,     Point2f(-1,  -1));
-      std::transform(kpts_first.begin(), kpts_first.end(), pts_first.begin(), [&](KeyPoint& k) { return k.pt; });
+   n   = kpts_first.size();
+   pts_first.resize(n,   INVALID_PT);
+   pts_second.resize(n,  INVALID_PT);
+   pts_ref.resize(n,     INVALID_PT);
+   std::transform(kpts_first.begin(), kpts_first.end(), pts_first.begin(), [&](KeyPoint& k) { return k.pt; });
 
-      vector<vector<DMatch>>  candidates_first_second,  candidates_first_ref;
-      matcher = BFMatcher(NORM_HAMMING);
-      matcher.knnMatch(descriptors_first, descriptors_second, candidates_first_second, 2);
-      /* matcher.knnMatch(descriptors_first, descriptors_ref   , candidates_first_ref   , 2); */
-      vector<DMatch> matches_first_second; // when autodetecting, hold the matches
-
-
-      for (int i = 0; i < candidates_first_second.size(); i++)
-      {
-         DMatch& m1 = candidates_first_second[i][0];
-         DMatch& m2 = candidates_first_second[i][1];
-         if (m1.distance < RATIO * m2.distance)
-            matches_first_second.push_back(m1);
-      }
-      /* for (int i = 0; i < candidates_first_ref.size(); i++) */
-      /* { */
-      /*    DMatch& m1 = candidates_first_ref[i][0]; */
-      /*    DMatch& m2 = candidates_first_ref[i][1]; */
-      /*    if (m1.distance < RATIO * m2.distance) */
-      /*       matches_first_ref.push_back(m1); */
-      /* } */
-
-      std::sort(matches_first_second.begin(), matches_first_second.end(), match_comparator);
-      /* std::sort(matches_first_ref.begin(), matches_first_ref.end(), match_comparator); */
-
-      for (DMatch& m : matches_first_second)
-         pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt;
-      
-      Mat descriptors_first_filtered;
-      vector<Point2f> pts_second_copy, pts_first_copy;
-      vector<KeyPoint> kpts_first_copy;
-      for (unsigned int i = 0; i < kpts_first.size(); ++i)
-      {
-         if (not (pts_second[i] == INVALID_PT))
-         {
-            pts_second_copy.push_back(pts_second[i]);
-            pts_first_copy.push_back(pts_first[i]);
-            kpts_first_copy.push_back(kpts_first[i]);
-            descriptors_first_filtered.push_back(descriptors_first.row(i));
-         }
-      }
-      pts_first = pts_first_copy;
-      kpts_first = kpts_first_copy;
-      pts_second = pts_second_copy;
-      descriptors_first_filtered.copyTo(descriptors_first);
-
-      if (resize_factor > 1)
-      {
-         std::transform(pts_first.begin() , pts_first.end() , pts_first.begin() , scale_pt_up);
-         std::transform(pts_second.begin(), pts_second.end(), pts_second.begin(), scale_pt_up);
-      }
-
-      /* drawMatches(pts_first, pts_second, series.first_frame(), series.second_frame()); */
+   vector<vector<DMatch>> candidates_first_second;
+   matcher = BFMatcher(NORM_HAMMING);
+   matcher.knnMatch(descriptors_first, descriptors_second, candidates_first_second, 2);
+   vector<DMatch> matches_first_second;
+   for (unsigned int i = 0; i < candidates_first_second.size(); i++)
+   {
+      DMatch& m1 = candidates_first_second[i][0];
+      DMatch& m2 = candidates_first_second[i][1];
+      if (m1.distance < RATIO * m2.distance)
+         matches_first_second.push_back(m1);
    }
 
-   Mat_<double> camera_matrix = series.camera_matrix();
+   std::sort(matches_first_second.begin(), matches_first_second.end(), match_comparator);
+
+   for (DMatch& m : matches_first_second)
+      pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt;
+
+   Mat descriptors_first_filtered;
+   vector<Point2f> pts_first_copy, pts_second_copy;
+   vector<KeyPoint> kpts_first_copy;
+   for (unsigned int i = 0; i < kpts_first.size(); ++i)
+   {
+      if (not (pts_second[i] == INVALID_PT))
+      {
+         pts_second_copy.push_back(pts_second[i]);
+         pts_first_copy.push_back(pts_first[i]);
+         kpts_first_copy.push_back(kpts_first[i]);
+         descriptors_first_filtered.push_back(descriptors_first.row(i));
+      }
+   }
+   pts_first = pts_first_copy;
+   kpts_first = kpts_first_copy;
+   pts_second = pts_second_copy;
+   descriptors_first.release();
+   descriptors_first_filtered.copyTo(descriptors_first);
+
+   if (interactive) drawMatches(pts_first, pts_second, first_frame, second_frame);
+
+   Mat_<double> camera_matrix = series.camera_matrix() / resize_factor;
+   camera_matrix.at<double>(2,2) = 1;
    Mat dist_coeffs = series.dist_coeffs();
 
    double focal = camera_matrix(0,0);
@@ -180,9 +153,11 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    std::cout << t << std::endl;
 
    // figure out which points in the pts arrays are affected by the mask
-   Mat descriptors_first_filtered;
-   vector<Point2f> pts_second_copy, pts_first_copy;
-   vector<KeyPoint> kpts_first_copy;
+   descriptors_first_filtered.release();
+   descriptors_first_filtered = Mat();
+   pts_second_copy.clear();
+   pts_first_copy.clear();
+   kpts_first_copy.clear();
    for (unsigned int i = 0; i < mask.rows; ++i)
    {
       if (mask.at<uchar>(i,1) == 0)
@@ -196,8 +171,8 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    pts_first = pts_first_copy;
    kpts_first = kpts_first_copy;
    pts_second = pts_second_copy;
+   descriptors_first.release();
    descriptors_first_filtered.copyTo(descriptors_first);
-
 
    Mat pnts4D;
    Mat P1 = camera_matrix * Mat::eye(3, 4, CV_64FC1), P2;
@@ -232,10 +207,12 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    Mat dehomogenized_good_subset;
    vector<Point2f> pts_ref_copy;
    vector<Point2f> pts_first_for_ref;
-   std::cout << pts_first.size() << std::endl;
-   std::cout << kpts_first.size() << std::endl;
-   std::cout << pts_ref.size() << std::endl;
-   std::cout << dehomogenized.size() << std::endl;
+
+   std::cout << "pts_first: " << pts_first.size() << std::endl;
+   std::cout << "kpts_first: " << kpts_first.size() << std::endl;
+   std::cout << "pts_ref: " << pts_ref.size() << std::endl;
+   std::cout << "dehomogenized: " << dehomogenized.size() << std::endl;
+
    for (unsigned int i = 0; i < kpts_first.size(); ++i)
    {
       if (not (pts_ref[i] == INVALID_PT))
@@ -246,11 +223,11 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
       }
    }
    pts_ref = pts_ref_copy;
-   if (resize_factor > 1)
-      std::transform(pts_ref.begin() , pts_ref.end() , pts_ref.begin() , scale_pt_up);
+   std::cout << "pts_first_for_ref: " << pts_first_for_ref.size() << std::endl;
+   std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl;
+   if (interactive) drawMatches(pts_first, pts_ref, first_frame, reference_frame);
 
-   drawMatches(pts_first_for_ref, pts_ref, series.first_frame(), series.reference_frame());
-   solvePnPRansac(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
+   solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
    Rodrigues(rvec,R_first_ref);
 
    std::cout << "R_first_ref: " << rotationMatToEuler(R_first_ref) << std::endl;
