@@ -25,7 +25,7 @@ if(OpenCV_FOUND)
    add_executable(manually_labelled stereo/manually_labeled.cpp stereo/stereo_v3.cpp triangulate/Triangulation.cpp)
    add_executable(castle_data stereo/castle_data.cpp stereo/stereo_v3.cpp)
    add_executable(evaluation stereo/evaluation.cpp stereo/stereo_v3.cpp)
-   add_executable(solvePnP solvePnP/solvePnP.cpp solvePnP/ImageSeries.cpp calibration/CalibrationFileReader.cpp)
+   add_executable(solvePnP solvePnP/solvePnP.cpp solvePnP/ImageSeries.cpp calibration/CalibrationFileReader.cpp solvePnP/estimation.cpp)
 
    target_link_libraries(cannyDetector ${OpenCV_LIBS})
    target_link_libraries(transpTest ${OpenCV_LIBS})

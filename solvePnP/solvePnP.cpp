@@ -57,12 +57,28 @@ int main(int argc, const char *argv[])
          );
    cmd.add(calibration_arg);
 
+   ValueArg<unsigned int> resize_arg("r",
+         "resize",
+         "Resize factor used when detecting features. Ignored if -f not set.",
+         false,
+         1,
+         "Resize factor"
+         );
+   cmd.add(resize_arg);
+
    SwitchArg interactive_arg("s",
          "show-matches",
          "Flag to indicate whether the matches between each pair of images should be shown.",
          false
          );
    cmd.add(interactive_arg);
+
+   SwitchArg features_arg("f",
+         "features",
+         "Flag to indicate whether automatike AKAZE features should be used. Correspondeces ignored if set.",
+         false
+         );
+   cmd.add(features_arg);
 
    cmd.parse(argc, argv);
 
@@ -100,23 +116,26 @@ int main(int argc, const char *argv[])
          std::cout << "Adding image " << *iter << std::endl;
          series.add_image(imread(*iter));
       }
-      for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
+      if (not features_arg.getValue())
       {
-         CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
-         std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
-         switch (i)
+         for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
          {
-            case 0:
-               series.add_correspondences(ImageSeries::SECOND_FRAME, corr); break;
-            case 1:
-               series.add_correspondences(ImageSeries::REF_FRAME, corr); break;
-            default:
-               series.add_correspondences(i-2, corr); break;
-               break;
+            CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
+            std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
+            switch (i)
+            {
+               case 0:
+                  series.add_correspondences(ImageSeries::SECOND_FRAME, corr); break;
+               case 1:
+                  series.add_correspondences(ImageSeries::REF_FRAME, corr); break;
+               default:
+                  series.add_correspondences(i-2, corr); break;
+                  break;
+            }
          }
       }
       std::cout << "Starting estimation..." << std::endl;
-      vector<PoseData> poses = runEstimate(series, interactive_arg.getValue());
+      vector<PoseData> poses = runEstimate(series, interactive_arg.getValue(), resize_arg.getValue(), features_arg.getValue());
       for (auto& i : poses)
       {
          cout << "R: " << rotationMatToEuler(i.R) << endl;
