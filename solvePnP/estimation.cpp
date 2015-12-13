@@ -1,6 +1,7 @@
 #include "ImageSeries.hpp"
 #include <stdexcept>
 #include <opencv2/features2d.hpp>
+#include <opencv2/xfeatures2d/nonfree.hpp>
 
 using namespace cv;
 using namespace std;
@@ -9,6 +10,10 @@ const Point2f INVALID_PT = Point2f(-1,-1);
 
 void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
 {
+   if (not (pts1.size() == pts2.size()))
+   {
+      throw invalid_argument("Vector sizes must be identical.");
+   }
    vector<KeyPoint> k1(pts1.size()), k2(pts2.size());
    vector<DMatch> matches(pts1.size());
    for (int i = 0; i < pts1.size(); ++i)
@@ -18,6 +23,9 @@ void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
    std::transform(pts1.begin(), pts1.end(), k1.begin(), [](Point2f& p) { return KeyPoint(p,4); });
    std::transform(pts2.begin(), pts2.end(), k2.begin(), [](Point2f& p) { return KeyPoint(p,4); });
    Mat matchesImg;
+   std::cout << k1.size() << std::endl;
+   std::cout << k2.size() << std::endl;
+   std::cout << matches.size() << std::endl;
    drawMatches(img1,k1,img2,k2,matches,matchesImg);
    namedWindow("Foobar", WINDOW_NORMAL);
    imshow("Foobar", matchesImg);
@@ -70,7 +78,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
       pts_second, pts_ref; // all 2nd and ref frame kpts with matches in ff, all others are INVALID_PT
    Mat descriptors_first, descriptors_second, descriptors_ref;
    Ptr<Feature2D> detector;
-   detector = AKAZE::create();
+   detector = xfeatures2d::SIFT::create();
    Mat first_frame, second_frame, reference_frame;
    if (resize_factor > 1)
    {
@@ -83,7 +91,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
       second_frame = series.second_frame();
       reference_frame = series.reference_frame();
    }
-   const float RATIO = 0.7;
+   const float RATIO = 0.8;
 
    BFMatcher matcher;
 
@@ -97,7 +105,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    std::transform(kpts_first.begin(), kpts_first.end(), pts_first.begin(), [&](KeyPoint& k) { return k.pt; });
 
    vector<vector<DMatch>> candidates_first_second;
-   matcher = BFMatcher(NORM_HAMMING);
+   matcher = BFMatcher(NORM_L2);
    matcher.knnMatch(descriptors_first, descriptors_second, candidates_first_second, 2);
    vector<DMatch> matches_first_second;
    for (unsigned int i = 0; i < candidates_first_second.size(); i++)
@@ -225,7 +233,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    pts_ref = pts_ref_copy;
    std::cout << "pts_first_for_ref: " << pts_first_for_ref.size() << std::endl;
    std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl;
-   if (interactive) drawMatches(pts_first, pts_ref, first_frame, reference_frame);
+   if (interactive) drawMatches(pts_first_for_ref, pts_ref, first_frame, reference_frame);
 
    solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
    Rodrigues(rvec,R_first_ref);
