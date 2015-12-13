@@ -8,54 +8,78 @@ using namespace std;
 
 const Point2f INVALID_PT = Point2f(-1,-1);
 
+/**
+ * @brief Draw matches between two images
+ * 
+ * This function accepts two vectors of points which are assumed to be ordered
+ * and of same length. This means that pts1[i] corresponds to pts2[i].
+ *
+ * @param pts1 First image's points
+ * @param pts2 Second image's points
+ * @param img1 First image
+ * @param img2 Second image
+ */
 void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
 {
+   /* Fail if vectors have different size */
    if (not (pts1.size() == pts2.size()))
    {
-      throw invalid_argument("Vector sizes must be identical.");
+      const size_t bufsz = 256;
+      char buffer[bufsz];
+      snprintf(buffer, bufsz, "Point vectors are of different length (%lu and %lu)",
+            pts1.size(), pts2.size());
+      throw invalid_argument(buffer);
    }
+
    vector<KeyPoint> k1(pts1.size()), k2(pts2.size());
    vector<DMatch> matches(pts1.size());
-   for (int i = 0; i < pts1.size(); ++i)
-   {
-      matches[i] = DMatch(i,i,0);
-   }
-   std::transform(pts1.begin(), pts1.end(), k1.begin(), [](Point2f& p) { return KeyPoint(p,4); });
-   std::transform(pts2.begin(), pts2.end(), k2.begin(), [](Point2f& p) { return KeyPoint(p,4); });
+
+   for (int i = 0; i < pts1.size(); ++i) matches[i] = DMatch(i,i,0); // points are ordered, so match trivially
+
+   const int ARBITRARY_SIZE = 4;
+   /* points -> keypoints */
+   std::transform(pts1.begin(), pts1.end(), k1.begin(), [](Point2f& p) { return KeyPoint(p, ARBITRARY_SIZE); });
+   std::transform(pts2.begin(), pts2.end(), k2.begin(), [](Point2f& p) { return KeyPoint(p, ARBITRARY_SIZE); });
+
+   /* Draw the matches */
    Mat matchesImg;
-   std::cout << k1.size() << std::endl;
-   std::cout << k2.size() << std::endl;
-   std::cout << matches.size() << std::endl;
    drawMatches(img1,k1,img2,k2,matches,matchesImg);
-   namedWindow("Foobar", WINDOW_NORMAL);
-   imshow("Foobar", matchesImg);
+
+   /* Show the window */
+   const string WIN_NAME = "Matching";
+   namedWindow(WIN_NAME, WINDOW_NORMAL);
+   imshow(WIN_NAME, matchesImg);
    waitKey(0);
 }
 
-vector<Point2f> remove_invalid(vector<Point2f>& v)
+/**
+ * @brief Filter out invalid points from a vector.
+ *
+ * This function is for convenience to clean up calling code.
+ *
+ * @param v The vector to strip
+ * @return A new vector containing only the valid points from v, in the same * order
+ */
+inline vector<Point2f> remove_invalid(vector<Point2f>& v)
 {
-   vector<Point2f> ret;
-   for (auto& p : v)
-      if(p != INVALID_PT) ret.push_back(p);
-   return ret;
+   auto new_end = std::remove_if(v.begin(), v.end(), [](Point2f& p) { return p == INVALID_PT; });
+   return vector<Point2f>(v.begin(), new_end);
 }
 
-vector<Point2f> operator& (vector<Point2f>& v, vector<Point2f>& mask)
-{
-   if (v.size() != mask.size())
-      throw std::invalid_argument("Vectors mus have same length. (Was " + std::to_string(v.size())+ " and " + std::to_string(mask.size()) + ")");
-   vector<Point2f> ret(v.size());
-   for (int i = 0; i < v.size(); ++i)
-   {
-      if (v[i] == INVALID_PT or mask[i] == INVALID_PT)
-         ret[i] = INVALID_PT;
-      else 
-         ret[i] = v[i];
-   }
-   return ret;
-}
-
-std::tuple<vector<Point2f>, vector<Point2f>> matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
+/**
+ * @brief Convert keypoint vectors and matches to ordered vectors of Points
+ *
+ * This function returns vectors of points where corresponding elements in the
+ * two vectors are at the same index
+ *
+ * @param matches Match vector idexing the two keypoint vectors
+ * @param kpts1 First image's keypoints
+ * @param kpts2 Second image's keypoints
+ * @return Tuple of vectors with corresponding points ordered according to \p
+ * matches
+ */
+std::tuple<vector<Point2f>, vector<Point2f>>
+matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
 {
    const int N = matches.size();
    vector<Point2f> imgpts1(N), imgpts2(N);
@@ -67,12 +91,10 @@ std::tuple<vector<Point2f>, vector<Point2f>> matches_to_points(vector<DMatch>& m
    return std::make_tuple(imgpts1, imgpts2);
 }
 
-vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsigned int resize_factor, bool autofeatures)
+vector<PoseData> runEstimate(const ImageSeries& series, bool show_matches, unsigned int resize_factor)
 {
-
    unsigned int n;
    auto match_comparator = [](DMatch& m1, DMatch& m2) { return m1.distance < m2.distance; };
-   auto scale_pt_up = [&resize_factor](Point2f& p) { return p * (float)resize_factor; };
    vector<KeyPoint> kpts_first, kpts_second, kpts_ref;
    vector<Point2f>  pts_first,  // all ff kpts converted to points
       pts_second, pts_ref; // all 2nd and ref frame kpts with matches in ff, all others are INVALID_PT
@@ -140,7 +162,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    descriptors_first.release();
    descriptors_first_filtered.copyTo(descriptors_first);
 
-   if (interactive) drawMatches(pts_first, pts_second, first_frame, second_frame);
+   if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
 
    Mat_<double> camera_matrix = series.camera_matrix() / resize_factor;
    camera_matrix.at<double>(2,2) = 1;
@@ -233,7 +255,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
    pts_ref = pts_ref_copy;
    std::cout << "pts_first_for_ref: " << pts_first_for_ref.size() << std::endl;
    std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl;
-   if (interactive) drawMatches(pts_first_for_ref, pts_ref, first_frame, reference_frame);
+   if (show_matches) drawMatches(pts_first_for_ref, pts_ref, first_frame, reference_frame);
 
    solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
    Rodrigues(rvec,R_first_ref);
@@ -304,7 +326,7 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool interactive, unsign
       /* Mat R_first_current, t_first_current; */
       /* solvePnP(dehomogenized_good_subset, remove_invalid(good_pts_current), camera_matrix, noArray(), rvec, t_first_current); */
       /* Rodrigues(rvec,R_first_current); */
-      /* if (interactive) */
+      /* if (show_matches) */
       /* { */
       /*    series.show_matches(0, i + 3, series.correspondences_for_frame(i)); */
       /* } */
