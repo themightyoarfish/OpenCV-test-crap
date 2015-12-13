@@ -18,8 +18,6 @@ static cv::Mat default_cam_mat(3,3, CV_64FC1, cam_mat_data);
 void convertToKeypoints(const CorrVec& v, std::vector<cv::KeyPoint>& kpts1, std::vector<cv::KeyPoint>& kpts2, 
       float size = 10, float angle = -1, float response = 0, int octave = 0, int classid = -1);
 
-std::vector<PoseData> runEstimate(const ImageSeries& series, bool interactive=false, unsigned int resize_factor=1, bool autofeatures=false);
-
 class ImageSeries
 {
    public:

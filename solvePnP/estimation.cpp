@@ -1,4 +1,4 @@
-#include "ImageSeries.hpp"
+#include "estimation.hpp"
 #include <stdexcept>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
@@ -8,17 +8,28 @@ using namespace std;
 
 const Point2f INVALID_PT = Point2f(-1,-1);
 
-/**
- * @brief Draw matches between two images
- * 
- * This function accepts two vectors of points which are assumed to be ordered
- * and of same length. This means that pts1[i] corresponds to pts2[i].
- *
- * @param pts1 First image's points
- * @param pts2 Second image's points
- * @param img1 First image
- * @param img2 Second image
- */
+inline vector<DMatch> ratio_test(const Mat descriptors1, const Mat descriptors2, const float ratio = 0.8)
+{
+   /* Lambda for sorting matches descending according to distance */
+   auto match_comparator = [](DMatch& m1, DMatch& m2) { return m1.distance < m2.distance; };
+
+   vector<vector<DMatch>> candidates;
+   BFMatcher matcher(NORM_L2); // Change for AKAZE
+   matcher.knnMatch(descriptors1, descriptors2, candidates, 2); // 2 best matches
+   vector<DMatch> matches;
+   for (unsigned int i = 0; i < candidates.size(); i++)
+   {
+      DMatch& m1 = candidates[i][0];
+      DMatch& m2 = candidates[i][1];
+      if (m1.distance < ratio * m2.distance)
+         matches.push_back(m1); // use each match passing the ratio test
+   }
+
+   /* Sort matches according to goodness/stability/distance */
+   std::sort(matches.begin(), matches.end(), match_comparator);
+   return matches;
+}
+
 void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
 {
    /* Fail if vectors have different size */
@@ -52,32 +63,12 @@ void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
    waitKey(0);
 }
 
-/**
- * @brief Filter out invalid points from a vector.
- *
- * This function is for convenience to clean up calling code.
- *
- * @param v The vector to strip
- * @return A new vector containing only the valid points from v, in the same * order
- */
 inline vector<Point2f> remove_invalid(vector<Point2f>& v)
 {
    auto new_end = std::remove_if(v.begin(), v.end(), [](Point2f& p) { return p == INVALID_PT; });
    return vector<Point2f>(v.begin(), new_end);
 }
 
-/**
- * @brief Convert keypoint vectors and matches to ordered vectors of Points
- *
- * This function returns vectors of points where corresponding elements in the
- * two vectors are at the same index
- *
- * @param matches Match vector idexing the two keypoint vectors
- * @param kpts1 First image's keypoints
- * @param kpts2 Second image's keypoints
- * @return Tuple of vectors with corresponding points ordered according to \p
- * matches
- */
 std::tuple<vector<Point2f>, vector<Point2f>>
 matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
 {
@@ -91,106 +82,117 @@ matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPo
    return std::make_tuple(imgpts1, imgpts2);
 }
 
-vector<PoseData> runEstimate(const ImageSeries& series, bool show_matches, unsigned int resize_factor)
+vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, unsigned int resize_factor)
 {
-   unsigned int n;
-   auto match_comparator = [](DMatch& m1, DMatch& m2) { return m1.distance < m2.distance; };
-   vector<KeyPoint> kpts_first, kpts_second, kpts_ref;
-   vector<Point2f>  pts_first,  // all ff kpts converted to points
-      pts_second, pts_ref; // all 2nd and ref frame kpts with matches in ff, all others are INVALID_PT
+   unsigned int n; // Number of points detected in first frame
+
+   vector<KeyPoint> kpts_first, kpts_second, kpts_ref; // keypoint vectors
+   vector<Point2f>  pts_first,  // all ff kpts converted to points, later filtered with second frame
+      pts_second, pts_ref; // all 2nd and ref frame kpts, later filtered so each has matches in ff
    Mat descriptors_first, descriptors_second, descriptors_ref;
    Ptr<Feature2D> detector;
-   detector = xfeatures2d::SIFT::create();
+   detector = xfeatures2d::SIFT::create(); // SIFT or AKAZE
    Mat first_frame, second_frame, reference_frame;
+
+   /* Parameter for ratio test */
+   const float RATIO = 0.8;
+
+   BFMatcher matcher;
+
+   /* Scale down images */
    if (resize_factor > 1)
    {
-      resize(series.first_frame(),      first_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
-      resize(series.second_frame(),     second_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
-      resize(series.reference_frame(),  reference_frame,      Size(),  1. / resize_factor,  1. / resize_factor);
+      resize(series.first_frame(),     first_frame,     Size(), 1. / resize_factor,  1. / resize_factor);
+      resize(series.second_frame(),    second_frame,    Size(), 1. / resize_factor,  1. / resize_factor);
+      resize(series.reference_frame(), reference_frame, Size(), 1. / resize_factor,  1. / resize_factor);
    } else 
    {
       first_frame = series.first_frame();
       second_frame = series.second_frame();
       reference_frame = series.reference_frame();
    }
-   const float RATIO = 0.8;
 
-   BFMatcher matcher;
+   detector->detectAndCompute(first_frame,  noArray(), kpts_first,  descriptors_first);
+   detector->detectAndCompute(second_frame, noArray(), kpts_second, descriptors_second);
 
-   detector->detectAndCompute(first_frame,      noArray(),  kpts_first,   descriptors_first);
-   detector->detectAndCompute(second_frame,     noArray(),  kpts_second,  descriptors_second);
-
-   n   = kpts_first.size();
+   n = kpts_first.size();
+   /* Since we always compare w/ first frame, make all same size, fill with
+    * invalidity markers
+    */
    pts_first.resize(n,   INVALID_PT);
    pts_second.resize(n,  INVALID_PT);
    pts_ref.resize(n,     INVALID_PT);
+
+   /* Convert keypoints to points */
    std::transform(kpts_first.begin(), kpts_first.end(), pts_first.begin(), [&](KeyPoint& k) { return k.pt; });
 
-   vector<vector<DMatch>> candidates_first_second;
-   matcher = BFMatcher(NORM_L2);
-   matcher.knnMatch(descriptors_first, descriptors_second, candidates_first_second, 2);
-   vector<DMatch> matches_first_second;
-   for (unsigned int i = 0; i < candidates_first_second.size(); i++)
-   {
-      DMatch& m1 = candidates_first_second[i][0];
-      DMatch& m2 = candidates_first_second[i][1];
-      if (m1.distance < RATIO * m2.distance)
-         matches_first_second.push_back(m1);
-   }
-
-   std::sort(matches_first_second.begin(), matches_first_second.end(), match_comparator);
+   /* Ratio test the first and second frame */
+   vector<DMatch> matches_first_second = ratio_test(descriptors_first, descriptors_second, RATIO);
 
    for (DMatch& m : matches_first_second)
       pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt;
 
+   /********* FILTER FIRST FRAME WITH SECOND FRAME ******************************
+     Filter the first frame's descriptors, points and keypoints
+     based on existence of correspondence in second frame
+   *****************************************************************************/
    Mat descriptors_first_filtered;
    vector<Point2f> pts_first_copy, pts_second_copy;
    vector<KeyPoint> kpts_first_copy;
    for (unsigned int i = 0; i < kpts_first.size(); ++i)
    {
-      if (not (pts_second[i] == INVALID_PT))
+      if (not (pts_second[i] == INVALID_PT)) // copy each index where both have valid point
       {
          pts_second_copy.push_back(pts_second[i]);
          pts_first_copy.push_back(pts_first[i]);
-         kpts_first_copy.push_back(kpts_first[i]);
-         descriptors_first_filtered.push_back(descriptors_first.row(i));
+         kpts_first_copy.push_back(kpts_first[i]); // also filter keypoints
+         descriptors_first_filtered.push_back(descriptors_first.row(i)); // push the corresponding descriptor
       }
    }
+   /* Move the copies into the originals */
    pts_first = pts_first_copy;
    kpts_first = kpts_first_copy;
    pts_second = pts_second_copy;
    descriptors_first.release();
    descriptors_first_filtered.copyTo(descriptors_first);
+   /********* FILTERING DONE ****************************************************/
 
    if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
 
-   Mat_<double> camera_matrix = series.camera_matrix() / resize_factor;
+   Mat_<double> camera_matrix    = series.camera_matrix() / resize_factor;
    camera_matrix.at<double>(2,2) = 1;
-   Mat dist_coeffs = series.dist_coeffs();
-
-   double focal = camera_matrix(0,0);
+   Mat dist_coeffs               = series.dist_coeffs();
+   double focal                  = camera_matrix(0,0);
    Point2d principalPoint(camera_matrix(0,2), camera_matrix(1,2));
 
+   Mat mask;
+   Mat E = findEssentialMat(pts_first, pts_second, 
+         focal, principalPoint,
+         RANSAC,
+         0.999, // confidence
+         3, // distance to be considered outlier
+         mask);
 
-   Mat mask; // TODO: Type as _<uchar>
-   Mat E = findEssentialMat(pts_first, pts_second, focal, principalPoint, RANSAC, 0.999, 1, mask);
+   Mat R_first_second, t_first_second;
+   int inliers = recoverPose(E, pts_first, pts_second, R_first_second, t_first_second, focal, principalPoint, mask);
+   Vec3d angles = rotationMatToEuler(R_first_second);
 
-   Mat R, t;
-   int inliers = recoverPose(E, pts_first, pts_second, R, t, focal, principalPoint, mask);
-   Vec3d angles = rotationMatToEuler(R);
+   std::cout << "Rotation first -> second: " << angles << std::endl;
+   std::cout << "Translation first -> second: " << t_first_second.t() << std::endl;
 
-   std::cout << angles << std::endl;
-   std::cout << t << std::endl;
-
-   // figure out which points in the pts arrays are affected by the mask
-   descriptors_first_filtered.release();
+   /********* FILTER FIRST AND SECOND FRAME WITH MASK ***************************
+     Filter the first frame's descriptors, points and keypoints
+     and the second frame's points with the mask from findessentialmat
+   *****************************************************************************/
+   /* clear old copies */
+   descriptors_first_filtered.release(); 
    descriptors_first_filtered = Mat();
    pts_second_copy.clear();
    pts_first_copy.clear();
    kpts_first_copy.clear();
    for (unsigned int i = 0; i < mask.rows; ++i)
    {
-      if (mask.at<uchar>(i,1) == 0)
+      if (mask.at<uchar>(i,0) == 1) // if point is inlier
       {
          kpts_first_copy.push_back(kpts_first[i]);
          pts_first_copy.push_back(pts_first[i]);
@@ -198,15 +200,16 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool show_matches, unsig
          descriptors_first_filtered.push_back(descriptors_first.row(i));
       }
    }
-   pts_first = pts_first_copy;
+   pts_first  = pts_first_copy;
    kpts_first = kpts_first_copy;
    pts_second = pts_second_copy;
    descriptors_first.release();
    descriptors_first_filtered.copyTo(descriptors_first);
+   /********* FILTERING DONE ****************************************************/
 
    Mat pnts4D;
    Mat P1 = camera_matrix * Mat::eye(3, 4, CV_64FC1), P2;
-   Mat p2[2] = { R, t }; 
+   Mat p2[2] = { R_first_second, t_first_second }; 
    hconcat(p2, 2, P2);
    P2 = camera_matrix * P2;
    triangulatePoints(P1, P2, pts_first, pts_second, pnts4D);
@@ -219,21 +222,13 @@ vector<PoseData> runEstimate(const ImageSeries& series, bool show_matches, unsig
    Mat rvec, t_first_ref; // note the indices are reversed compared to my thesis
    Mat R_first_ref;
    /* Match ref frame */
-   vector<vector<DMatch>>  candidates_first_ref;
-   vector<DMatch>  matches_first_ref;
    detector->detectAndCompute(reference_frame,  noArray(),  kpts_ref,     descriptors_ref);
-   matcher.knnMatch(descriptors_first, descriptors_ref, candidates_first_ref, 2);
-   for (int i = 0; i < candidates_first_ref.size(); i++)
-   {
-      DMatch& m1 = candidates_first_ref[i][0];
-      DMatch& m2 = candidates_first_ref[i][1];
-      if (m1.distance < RATIO * m2.distance)
-         matches_first_ref.push_back(m1);
-   }
 
-   std::sort(matches_first_ref.begin(), matches_first_ref.end(), match_comparator);
+   vector<DMatch>  matches_first_ref = ratio_test(descriptors_first, descriptors_ref, RATIO);
+
    for (DMatch& m : matches_first_ref)
       pts_ref[m.queryIdx] = kpts_ref[m.trainIdx].pt;
+
    Mat dehomogenized_good_subset;
    vector<Point2f> pts_ref_copy;
    vector<Point2f> pts_first_for_ref;
