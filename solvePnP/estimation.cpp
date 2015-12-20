@@ -196,10 +196,8 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
 
    Mat R_first_second, t_first_second;
    int inliers = recoverPose(E, pts_first, pts_second, R_first_second, t_first_second, focal, principalPoint, mask);
-   Vec3d angles = rotationMatToEuler(R_first_second);
 
-   std::cout << "Rotation first -> second: " << angles << std::endl;
-   std::cout << "Translation first -> second: " << t_first_second.t() << std::endl;
+   std::cout << PoseData(R_first_second, t_first_second).to_string() << std::endl;
 
    /********* FILTER FIRST AND SECOND FRAME WITH MASK ***************************
      Filter the first frame's descriptors, points and keypoints
@@ -276,8 +274,7 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
    Rodrigues(rvec,R_first_ref);
 
-   std::cout << "R_first_ref: " << rotationMatToEuler(R_first_ref) << std::endl;
-   std::cout << "t_first_ref: " << t_first_ref << std::endl;
+   std::cout << PoseData(R_first_ref, t_first_ref).to_string() << std::endl;
 
    exit(1);
 
