@@ -1,4 +1,5 @@
 #include "estimation.hpp"
+#include "utils.h"
 #include <stdexcept>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
@@ -8,13 +9,22 @@ using namespace std;
 
 const Point2f INVALID_PT = Point2f(-1,-1);
 
-inline vector<DMatch> ratio_test(const Mat descriptors1, const Mat descriptors2, const float ratio = 0.8)
+inline vector<DMatch> ratio_test(const Mat descriptors1, const Mat descriptors2, const float ratio = 0.8, detector_type dtype=DETECTOR_SIFT)
 {
    /* Lambda for sorting matches descending according to distance */
    auto match_comparator = [](DMatch& m1, DMatch& m2) { return m1.distance < m2.distance; };
 
    vector<vector<DMatch>> candidates;
-   BFMatcher matcher(NORM_L2); // Change for AKAZE
+   BFMatcher matcher;
+   switch (dtype)
+   {
+      case DETECTOR_SIFT:
+         matcher = BFMatcher(NORM_L2); // Change for AKAZE
+         break;
+      case DETECTOR_KAZE:
+         matcher = BFMatcher(NORM_HAMMING); // Change for AKAZE
+         break;
+   }
    matcher.knnMatch(descriptors1, descriptors2, candidates, 2); // 2 best matches
    vector<DMatch> matches;
    for (unsigned int i = 0; i < candidates.size(); i++)
@@ -82,7 +92,7 @@ matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPo
    return std::make_tuple(imgpts1, imgpts2);
 }
 
-vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, unsigned int resize_factor)
+vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, unsigned int resize_factor, detector_type dtype)
 {
    unsigned int n; // Number of points detected in first frame
 
@@ -91,7 +101,18 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
       pts_second, pts_ref; // all 2nd and ref frame kpts, later filtered so each has matches in ff
    Mat descriptors_first, descriptors_second, descriptors_ref;
    Ptr<Feature2D> detector;
-   detector = xfeatures2d::SIFT::create(); // SIFT or AKAZE
+   switch (dtype)
+   {
+      case DETECTOR_SIFT:
+         std::cout << "Detector: SIFT" << std::endl;
+         detector = xfeatures2d::SIFT::create(); // SIFT or AKAZE
+         break;
+      case DETECTOR_KAZE:
+         std::cout << "Detector: AKAZE" << std::endl;
+         detector = AKAZE::create(); // SIFT or AKAZE
+         break;
+   }
+
    Mat first_frame, second_frame, reference_frame;
 
    /* Parameter for ratio test */

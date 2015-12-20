@@ -18,5 +18,6 @@ static cv::Vec3d rotationMatToEuler(const cv::Mat& R)
    return angles;
 }
 
+typedef enum {DETECTOR_NONE, DETECTOR_SURF, DETECTOR_KAZE, DETECTOR_SIFT } detector_type;
 
 #endif /* end of include guard: UTILS_H */

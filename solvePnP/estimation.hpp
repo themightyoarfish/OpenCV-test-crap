@@ -61,6 +61,6 @@ std::vector<PoseData> runEstimateManual(const ImageSeries& series, bool show_mat
  * @param resize_factor Scale factor to apply to the images to speed up feature
  * detection
  */
-std::vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches=false, unsigned int resize_factor=1);
+std::vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches=false, unsigned int resize_factor=1, detector_type dtype=DETECTOR_SIFT);
 
 #endif /* end of include guard: ESTIMATION_HPP */

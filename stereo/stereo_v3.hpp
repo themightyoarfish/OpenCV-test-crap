@@ -8,13 +8,12 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include "utils.h"
 
 #define PRINT(label, x) cout << (label) << "\n" << (x) << endl
 
 using namespace cv;
 using namespace std;
-
-typedef enum { DETECTOR_SURF, DETECTOR_KAZE, DETECTOR_SIFT } detector_type;
 
 typedef struct 
 {

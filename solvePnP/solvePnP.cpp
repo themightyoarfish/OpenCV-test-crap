@@ -74,14 +74,22 @@ int main(int argc, const char *argv[])
          );
    cmd.add(interactive_arg);
 
-   SwitchArg features_arg("f",
+   ValueArg<string> features_arg("f",
          "features",
-         "Flag to indicate whether automatike AKAZE features should be used. Correspondeces ignored if set.",
-         false
+         "The feature detector to use. Can be SIFT or AKAZE or NONE",
+         false,
+         "NONE",
+         "Feature detector"
          );
    cmd.add(features_arg);
 
    cmd.parse(argc, argv);
+
+   if (not (features_arg.getValue() == "SIFT") and not (features_arg.getValue() == "AKAZE"))
+   {
+      cerr << "Detector must be one of SIFT, AKAZE, or NONE." << endl;
+      exit(2);
+   }
 
    CalibrationFileReader reader(calibration_arg.getValue());
    vector<string> image_filenames = getLinesFromFile(
@@ -117,7 +125,7 @@ int main(int argc, const char *argv[])
          std::cout << "Adding image " << *iter << std::endl;
          series.add_image(imread(*iter));
       }
-      if (not features_arg.getValue())
+      if (features_arg.getValue() == "NONE")
       {
          for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
          {
@@ -135,8 +143,16 @@ int main(int argc, const char *argv[])
             }
          }
       }
+      detector_type dtype;
+      if (features_arg.getValue() == "SIFT")
+         dtype = DETECTOR_SIFT;
+      else if (features_arg.getValue() == "AKAZE")
+         dtype = DETECTOR_KAZE;
+      else 
+         dtype = DETECTOR_NONE;
+
       std::cout << "Starting estimation..." << std::endl;
-      vector<PoseData> poses = runEstimateAuto(series, interactive_arg.getValue(), resize_arg.getValue());
+      vector<PoseData> poses = runEstimateAuto(series, interactive_arg.getValue(), resize_arg.getValue(), dtype);
       for (auto& i : poses)
       {
          cout << "R: " << rotationMatToEuler(i.R) << endl;
