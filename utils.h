@@ -23,8 +23,8 @@ struct PoseData {
    {
       cv::Vec3d angles = rotationMatToEuler(R);
       std::stringstream sstream;
-      sstream << "Rotation first -> second: " << angles << "\n";
-      sstream << "Translation first -> second: " << t.t();
+      sstream << angles << "\n";
+      sstream << t.t();
       return sstream.str();
    }
 };

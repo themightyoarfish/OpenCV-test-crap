@@ -92,6 +92,45 @@ matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPo
    return std::make_tuple(imgpts1, imgpts2);
 }
 
+/* PoseData relative_pose(Mat& descriptors_given, vector<Point2f> pts_given, vector<Mat&> _3d_pts, Mat& current_frame, Ptr<Feature2D> detector, float ratio, vector<Point2f>& pts_current) */
+/* { */
+/*    Mat rvec, t_first_current; // note the indices are reversed compared to my thesis */
+/*    Mat R_first_current; */
+/*    Mat descriptors_current; */
+/*    vector<KeyPoint> kpts_current; */
+/*    detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current); */
+/*    vector<DMatch>  matches_first_current = ratio_test(descriptors_given, descriptors_current, ratio); */
+
+/*    pts_current.resize(kpts_current.size(), INVALID_PT); */
+
+/*    for (DMatch& m : matches_first_current) */
+/*       pts_current[m.queryIdx] = kpts_current[m.trainIdx].pt; */
+
+/*    Mat _3d_ptsg_good_subset; */
+/*    vector<Point2f> pts_current_copy; */
+/*    vector<Point2f> pts_given_for_current; */
+
+
+/*    for (unsigned int i = 0; i < pts_given.size(); ++i) */
+/*    { */
+/*       if (not (pts_current[i] == INVALID_PT)) */
+/*       { */
+/*          pts_current_copy.push_back(pts_current[i]); */
+/*          _3d_ptsg_good_subset.push_back(dehomogenized.row(i)); */
+/*          pts_given_for_current.push_back(pts_given[i]); */
+/*       } */
+/*    } */
+/*    pts_current = pts_current_copy; */
+/*    std::cout << "pts_given_for_current: " << pts_given_for_current.size() << std::endl; */
+/*    std::cout << "_3d_pts_good_subset: " << dehomogenized_good_subset.size() << std::endl; */
+/*    if (show_matches) drawMatches(pts_given_for_current, pts_current, first_frame, current_frame); */
+
+/*    solvePnP(_3d_ptsg_good_subset, pts_current, camera_matrix, noArray(), rvec, t_first_current); */
+/*    Rodrigues(rvec,R_first_current); */
+
+/*    std::cout << "Motion first -> current: \n" << PoseData(R_first_current, t_first_current).to_string() << std::endl; */
+/*    return PoseData(R_first_current, t_first_current); */
+/* } */
 vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, unsigned int resize_factor, detector_type dtype)
 {
    unsigned int n; // Number of points detected in first frame
@@ -178,8 +217,6 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    descriptors_first_filtered.copyTo(descriptors_first);
    /********* FILTERING DONE ****************************************************/
 
-   if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
-
    Mat_<double> camera_matrix    = series.camera_matrix() / resize_factor;
    camera_matrix.at<double>(2,2) = 1;
    Mat dist_coeffs               = series.dist_coeffs();
@@ -190,14 +227,14 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    Mat E = findEssentialMat(pts_first, pts_second, 
          focal, principalPoint,
          RANSAC,
-         0.999, // confidence
+         0.99, // confidence
          3, // distance to be considered outlier
          mask);
 
    Mat R_first_second, t_first_second;
    int inliers = recoverPose(E, pts_first, pts_second, R_first_second, t_first_second, focal, principalPoint, mask);
 
-   std::cout << PoseData(R_first_second, t_first_second).to_string() << std::endl;
+   std::cout << "Motion first -> second: \n" << PoseData(R_first_second, t_first_second).to_string() << std::endl;
 
    /********* FILTER FIRST AND SECOND FRAME WITH MASK ***************************
      Filter the first frame's descriptors, points and keypoints
@@ -224,6 +261,9 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    pts_second = pts_second_copy;
    descriptors_first.release();
    descriptors_first_filtered.copyTo(descriptors_first);
+
+   if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
+
    /********* FILTERING DONE ****************************************************/
 
    Mat pnts4D;
@@ -244,6 +284,7 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    detector->detectAndCompute(reference_frame,  noArray(),  kpts_ref,     descriptors_ref);
 
    vector<DMatch>  matches_first_ref = ratio_test(descriptors_first, descriptors_ref, RATIO);
+   pts_ref.resize(pts_first.size(), INVALID_PT);
 
    for (DMatch& m : matches_first_ref)
       pts_ref[m.queryIdx] = kpts_ref[m.trainIdx].pt;
@@ -274,78 +315,60 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref);
    Rodrigues(rvec,R_first_ref);
 
-   std::cout << PoseData(R_first_ref, t_first_ref).to_string() << std::endl;
-
-   exit(1);
+   std::cout << "Motion first -> ref: \n" << PoseData(R_first_ref, t_first_ref).to_string() << std::endl;
 
    const unsigned int numImgs = series.num_intermediate_imgs();
    vector<PoseData> ret(numImgs);
 
    for (unsigned int i = 0; i < numImgs; ++i) 
    {
-      /* vector<Point2f> good_pts_current; */
-      /* vector<KeyPoint> kpts_current; */
-      /* if (not autofeatures) */
-      /* { */
-      /*    CorrVec corr_first_current = series.correspondences_for_frame(i); */
-      /*    convertToKeypoints(corr_first_current, kpts_first, kpts_current); */
-      /*    for(KeyPoint& k : kpts_current) */
-      /*       good_pts_current.push_back(k.pt); */
-      /*    good_pts_current = good_pts_current & good_pts_first; */
-      /* } else */ 
-      /* { */
-      /*    vector<KeyPoint> kpts_current; */
-      /*    Mat descriptors_current; */
-      /*    Mat current_frame; */
-      /*    resize(series.image_for_index(i), current_frame, Size(),  1. / resize_factor,  1. / resize_factor); */
-      /*    detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current); */
 
-      /*    vector<DMatch> matches_first_current; */
-      /*    vector<vector<DMatch>>  candidates_first_current; */
-      /*    matcher.knnMatch(descriptors_first, descriptors_current, candidates_first_current, 2); */
+      /*** SOLVEPNP ***/
+      Mat current_frame;
+      if (resize_factor > 1)
+         resize(series.image_for_index(i), current_frame, Size(), 1. / resize_factor,  1. / resize_factor);
+      else current_frame = series.image_for_index(i);
 
-      /*    for (int i = 0; i < candidates_first_current.size(); i++) */
-      /*    { */
-      /*       DMatch& m1 = candidates_first_current[i][0]; */
-      /*       DMatch& m2 = candidates_first_current[i][1]; */
-      /*       if (m1.distance < RATIO * m2.distance) */
-      /*          matches_first_current.push_back(m1); */
-      /*    } */
-      /*    std::sort(matches_first_current.begin(), matches_first_current.end(), match_comparator); */
+      Mat rvec, t_first_current; // note the indices are reversed compared to my thesis
+      Mat R_first_current;
+      Mat descriptors_current;
+      vector<KeyPoint> kpts_current;
+      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current);
+      vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, RATIO);
 
-      /*    for (DMatch& m : matches_first_current) */
-      /*       good_pts_current[m.queryIdx] = kpts_current[m.trainIdx].pt; */
-      /*    good_pts_current = good_pts_current & good_pts_first; */
-      /*    std::transform(good_pts_current.begin(), good_pts_current.end(), good_pts_current.begin(), scale_pt_up); */
-      /* } */
-      /* vector<Point2f> pts_current_usable = good_pts_current; */
-      /* Mat dehomogenized_good_subset(remove_invalid(pts_current_usable).size(), 3, dehomogenized.type()); */
+      vector<Point2f> pts_current(pts_first.size(), INVALID_PT);
 
-      /* int c1 = 0, c2 = 0; */
-      /* for (int i = 0; i < good_pts_first.size(); ++i) */
-      /* { */
-      /*    if (good_pts_first[i] != INVALID_PT) */
-      /*    { */
-      /*       if (pts_ref[i] != INVALID_PT) */
-      /*       { */
-      /*          dehomogenized_good_subset.at<double>(c2,0) = dehomogenized.at<double>(c1,0); */
-      /*          dehomogenized_good_subset.at<double>(c2,1) = dehomogenized.at<double>(c1,1); */
-      /*          dehomogenized_good_subset.at<double>(c2,2) = dehomogenized.at<double>(c1,2); */
-      /*          c2++; */
-      /*       } */
-      /*       c1++; */
-      /*    } */
-      /* } */
-      /* Mat R_first_current, t_first_current; */
-      /* solvePnP(dehomogenized_good_subset, remove_invalid(good_pts_current), camera_matrix, noArray(), rvec, t_first_current); */
-      /* Rodrigues(rvec,R_first_current); */
-      /* if (show_matches) */
-      /* { */
-      /*    series.show_matches(0, i + 3, series.correspondences_for_frame(i)); */
-      /* } */
-      /* Mat t_current_ref = -R_first_ref * R_first_current.t() * t_first_current + t_first_ref; */
-      /* Mat R_current_ref = R_first_ref * R_first_current.t(); */
-      /* ret[i] = { R_current_ref, t_current_ref }; */
+      for (DMatch& m : matches_first_current)
+         pts_current[m.queryIdx] = kpts_current[m.trainIdx].pt;
+
+      Mat dehomogenized_good_subset;
+      vector<Point2f> pts_current_copy;
+      vector<Point2f> pts_first_for_current;
+
+      std::cout << "pts_first: " << pts_first.size() << std::endl;
+      std::cout << "kpts_first: " << kpts_first.size() << std::endl;
+      std::cout << "pts_current: " << pts_current.size() << std::endl;
+      std::cout << "dehomogenized: " << dehomogenized.size() << std::endl;
+
+      for (unsigned int i = 0; i < kpts_first.size(); ++i)
+      {
+         if (not (pts_current[i] == INVALID_PT))
+         {
+            pts_current_copy.push_back(pts_current[i]);
+            dehomogenized_good_subset.push_back(dehomogenized.row(i));
+            pts_first_for_current.push_back(pts_first[i]);
+         }
+      }
+      pts_current = pts_current_copy;
+      std::cout << "pts_first_for_current: " << pts_first_for_current.size() << std::endl;
+      std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl;
+      if (show_matches) drawMatches(pts_first_for_current, pts_current, first_frame, current_frame);
+
+      solvePnP(dehomogenized_good_subset, pts_current, camera_matrix, noArray(), rvec, t_first_current);
+      Rodrigues(rvec,R_first_current);
+
+      std::cout << "Motion first -> current: \n" << PoseData(R_first_current, t_first_current).to_string() << std::endl;
+      ret[i] = PoseData(R_first_current, t_first_current);
    }
 
    return ret;
