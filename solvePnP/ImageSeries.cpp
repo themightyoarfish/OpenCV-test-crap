@@ -4,6 +4,8 @@
 
 using namespace std;
 using namespace cv;
+namespace relative_pose 
+{
 
 void ImageSeries::sortPoints(CorrVec& v)
 {
@@ -140,4 +142,5 @@ const cv::Mat& ImageSeries::dist_coeffs(void) const
 unsigned int ImageSeries::num_intermediate_imgs() const
 {
    return mImages.size() - 3;
+}
 }

@@ -11,6 +11,7 @@
 
 using namespace cv;
 using namespace std;
+using namespace relative_pose;
 
 vector<string> getLinesFromFile(const string& fname, bool (*yesno)(string) = [](string s) { return true; })
 {

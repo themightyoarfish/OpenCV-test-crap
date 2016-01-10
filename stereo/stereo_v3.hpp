@@ -14,6 +14,7 @@
 
 using namespace cv;
 using namespace std;
+using namespace relative_pose;
 
 typedef struct 
 {

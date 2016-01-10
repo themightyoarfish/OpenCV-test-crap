@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "utils.h"
+namespace relative_pose 
+{
 
 class ImageSeries;
 
@@ -57,4 +59,5 @@ class ImageSeries
       /** TODO: MAKE PRIVATE **/
       void show_matches(unsigned int indexl, unsigned int indexr, const CorrVec& v) const;
 };
+}
 #endif

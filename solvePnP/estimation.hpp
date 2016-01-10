@@ -4,6 +4,26 @@
 #include <opencv2/opencv.hpp>
 #include "ImageSeries.hpp"
 #include <vector>
+namespace relative_pose 
+{
+
+/**
+ * @brief Perform a ratio test matching on two descriptor sets.
+ *
+ * The descriptors are matched with the L2 norm in case \p detector_type is SIFT
+ * or Hamming distance for AKAZE. A match (d1, d2) is accepted if the distance
+ * between d1 and d2 is at most \p ratio times the distance between d1 and its
+ * second-best match.
+ *
+ * @param descriptors1 First descriptor set
+ * @param descriptors2 Second descriptor set
+ * @param ratio The ratio to use
+ * @param dtype The type of detector used in obtaining the descriptors so that
+ * they can be matched correctly
+ * @return A vector of good matches betwee \p descriptors1 and \p descriptors2
+ */
+std::vector<cv::DMatch> ratio_test(const cv::Mat descriptors1, const cv::Mat descriptors2,
+      const float ratio = 0.8, detector_type dtype=DETECTOR_SIFT);
 
 /**
  * @brief Draw matches between two images
@@ -63,4 +83,5 @@ std::vector<PoseData> runEstimateManual(const ImageSeries& series, bool show_mat
  */
 std::vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches=false, unsigned int resize_factor=1, detector_type dtype=DETECTOR_SIFT);
 
+}
 #endif /* end of include guard: ESTIMATION_HPP */
