@@ -286,45 +286,6 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
    PoseData d = relative_pose(descriptors_first, pts_first, dehomogenized, first_frame, reference_frame, detector, RATIO, camera_matrix, show_matches);
    Mat t_first_ref = d.t, R_first_ref = d.R;
 
-   /* Mat rvec, t_first_ref; // note the indices are reversed compared to my thesis */
-   /* Mat R_first_ref; */
-   /* /1* Match ref frame *1/ */
-   /* detector->detectAndCompute(reference_frame,  noArray(),  kpts_ref,     descriptors_ref); */
-
-   /* vector<DMatch>  matches_first_ref = ratio_test(descriptors_first, descriptors_ref, RATIO); */
-   /* pts_ref.resize(pts_first.size(), INVALID_PT); */
-
-   /* for (DMatch& m : matches_first_ref) */
-   /*    pts_ref[m.queryIdx] = kpts_ref[m.trainIdx].pt; */
-
-   /* Mat dehomogenized_good_subset; */
-   /* vector<Point2f> pts_ref_copy; */
-   /* vector<Point2f> pts_first_for_ref; */
-
-   /* std::cout << "pts_first: " << pts_first.size() << std::endl; */
-   /* std::cout << "kpts_first: " << kpts_first.size() << std::endl; */
-   /* std::cout << "pts_ref: " << pts_ref.size() << std::endl; */
-   /* std::cout << "dehomogenized: " << dehomogenized.size() << std::endl; */
-
-   /* for (unsigned int i = 0; i < kpts_first.size(); ++i) */
-   /* { */
-   /*    if (not (pts_ref[i] == INVALID_PT)) */
-   /*    { */
-   /*       pts_ref_copy.push_back(pts_ref[i]); */
-   /*       dehomogenized_good_subset.push_back(dehomogenized.row(i)); */
-   /*       pts_first_for_ref.push_back(pts_first[i]); */
-   /*    } */
-   /* } */
-   /* pts_ref = pts_ref_copy; */
-   /* std::cout << "pts_first_for_ref: " << pts_first_for_ref.size() << std::endl; */
-   /* std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl; */
-   /* if (show_matches) drawMatches(pts_first_for_ref, pts_ref, first_frame, reference_frame); */
-
-   /* solvePnP(dehomogenized_good_subset, pts_ref, camera_matrix, noArray(), rvec, t_first_ref); */
-   /* Rodrigues(rvec,R_first_ref); */
-
-   /* std::cout << "Motion first -> ref: \n" << PoseData(R_first_ref, t_first_ref).to_string() << std::endl; */
-
    const unsigned int numImgs = series.num_intermediate_imgs();
    vector<PoseData> ret(numImgs);
 
@@ -337,45 +298,10 @@ vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, u
          resize(series.image_for_index(i), current_frame, Size(), 1. / resize_factor,  1. / resize_factor);
       else current_frame = series.image_for_index(i);
 
-      Mat rvec, t_first_current; // note the indices are reversed compared to my thesis
-      Mat R_first_current;
-      Mat descriptors_current;
-      vector<KeyPoint> kpts_current;
-      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current);
-      vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, RATIO);
+      std::cout << "First -> Frame " << i << std::endl;
+      PoseData d = relative_pose(descriptors_first, pts_first, dehomogenized, first_frame, current_frame, detector, RATIO, camera_matrix, show_matches);
+      Mat t_first_current = d.t, R_first_current = d.R;
 
-      vector<Point2f> pts_current(pts_first.size(), INVALID_PT);
-
-      for (DMatch& m : matches_first_current)
-         pts_current[m.queryIdx] = kpts_current[m.trainIdx].pt;
-
-      Mat dehomogenized_good_subset;
-      vector<Point2f> pts_current_copy;
-      vector<Point2f> pts_first_for_current;
-
-      std::cout << "pts_first: " << pts_first.size() << std::endl;
-      std::cout << "kpts_first: " << kpts_first.size() << std::endl;
-      std::cout << "pts_current: " << pts_current.size() << std::endl;
-      std::cout << "dehomogenized: " << dehomogenized.size() << std::endl;
-
-      for (unsigned int i = 0; i < kpts_first.size(); ++i)
-      {
-         if (not (pts_current[i] == INVALID_PT))
-         {
-            pts_current_copy.push_back(pts_current[i]);
-            dehomogenized_good_subset.push_back(dehomogenized.row(i));
-            pts_first_for_current.push_back(pts_first[i]);
-         }
-      }
-      pts_current = pts_current_copy;
-      std::cout << "pts_first_for_current: " << pts_first_for_current.size() << std::endl;
-      std::cout << "dehomogenized_good_subset: " << dehomogenized_good_subset.size() << std::endl;
-      if (show_matches) drawMatches(pts_first_for_current, pts_current, first_frame, current_frame);
-
-      solvePnP(dehomogenized_good_subset, pts_current, camera_matrix, noArray(), rvec, t_first_current);
-      Rodrigues(rvec,R_first_current);
-
-      std::cout << "Motion first -> current: \n" << PoseData(R_first_current, t_first_current).to_string() << std::endl;
       ret[i] = PoseData(R_first_current, t_first_current);
    }
 
