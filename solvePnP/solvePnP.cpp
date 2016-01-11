@@ -28,6 +28,7 @@ int main(int argc, const char *argv[])
    using TCLAP::CmdLine;
    using TCLAP::ValueArg;
    using TCLAP::SwitchArg;
+   using TCLAP::ValuesConstraint;
    CmdLine cmd("Useful message", ' ', "0.1");
    ValueArg<string> images_arg("i", 
          "image-names",
@@ -75,18 +76,20 @@ int main(int argc, const char *argv[])
          );
    cmd.add(interactive_arg);
 
+   vector<string> DETECTORS = { "SIFT", "SURF", "AKAZE" };
+   ValuesConstraint<string> allowedVals(DETECTORS);
    ValueArg<string> features_arg("f",
          "features",
-         "The feature detector to use. Can be SIFT or AKAZE or NONE",
+         "The feature detector to use. Can be SIFT, SURF, or AKAZE or NONE",
          false,
-         "NONE",
-         "Feature detector"
+         "SIFT",
+         &allowedVals
          );
    cmd.add(features_arg);
 
    cmd.parse(argc, argv);
 
-   if (not (features_arg.getValue() == "SIFT") and not (features_arg.getValue() == "AKAZE"))
+   if (find(DETECTORS.begin(), DETECTORS.end(), features_arg.getValue()) == DETECTORS.end())
    {
       cerr << "Detector must be one of SIFT, AKAZE, or NONE." << endl;
       exit(2);
@@ -145,19 +148,25 @@ int main(int argc, const char *argv[])
          }
       }
       detector_type dtype;
-      if (features_arg.getValue() == "SIFT")
+      string detector = features_arg.getValue();
+      if (detector == "SIFT")
          dtype = DETECTOR_SIFT;
-      else if (features_arg.getValue() == "AKAZE")
+      else if (detector == "AKAZE")
          dtype = DETECTOR_KAZE;
+      else if (detector == "SURF")
+         dtype = DETECTOR_SURF;
       else 
          dtype = DETECTOR_NONE;
 
       std::cout << "Starting estimation..." << std::endl;
       vector<PoseData> poses = runEstimateAuto(series, interactive_arg.getValue(), resize_arg.getValue(), dtype);
+      int c = 0;
+      std::cout << "Estimates for transform from first frame in the order of files from the input file list." << std::endl;
       for (auto& i : poses)
       {
-         cout << "R: " << rotationMatToEuler(i.R) << endl;
-         cout << "t: " << i.t << endl;
+         cout << c++ << endl;
+         cout << "\tR: " << rotationMatToEuler(i.R) << endl;
+         cout << "\tt: " << i.t.t() << endl;
       }
    } catch (std::exception& e)
    {
