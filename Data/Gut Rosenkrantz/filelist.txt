@@ -6,3 +6,4 @@
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/4.JPG
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/5.JPG
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/9.JPG
+/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/0_ref.JPG

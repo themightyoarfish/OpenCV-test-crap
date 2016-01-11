@@ -5,3 +5,4 @@
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->4.JPG_pts
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->5.JPG_pts
 /Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->9.JPG_pts
+/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->0_ref.JPG_pts
