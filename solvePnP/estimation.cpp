@@ -136,19 +136,18 @@ namespace relative_pose
       Mat R_first_current;
       Mat descriptors_current;
       vector<KeyPoint> kpts_current;
-      vector<Point2f>  pts_current;
-      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current);
+      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current); // TODO: make a new detector
       vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, ratio);
 
+      vector<Point2f> pts_current;
       pts_current.resize(kpts_current.size(), INVALID_PT);
 
-      for (DMatch& m : matches_first_current)
+      for (DMatch& m : matches_first_current) // convert to points
          pts_current[m.queryIdx] = kpts_current[m.trainIdx].pt;
 
-      Mat _3d_pts_good_subset;
-      vector<Point2f> pts_current_copy;
-      vector<Point2f> pts_first_for_current;
-
+      Mat _3d_pts_good_subset;               // world points filtered so that each one occurs in current_frame
+      vector<Point2f> pts_current_copy;      // img points in current_frame which have match in ff points
+      vector<Point2f> pts_first_for_current; // filtered ff points
 
       for (unsigned int i = 0; i < pts_first.size(); ++i)
       {
@@ -193,8 +192,8 @@ namespace relative_pose
       unsigned int n; // Number of points detected in first frame
 
       vector<KeyPoint> kpts_first, kpts_second, kpts_ref; // keypoint vectors
-      vector<Point2f>  pts_first,  // all ff kpts converted to points, later filtered with second frame
-         pts_second, pts_ref; // all 2nd and ref frame kpts, later filtered so each has matches in ff
+      vector<Point2f>  pts_first,                         // all ff kpts converted to points, later filtered with second frame
+         pts_second, pts_ref;                             // all 2nd and ref frame kpts, later filtered so each has matches in ff
       Mat descriptors_first, descriptors_second, descriptors_ref;
       Ptr<Feature2D> detector;
       switch (dtype)
@@ -206,6 +205,10 @@ namespace relative_pose
          case DETECTOR_KAZE:
             std::cout << "Detector: AKAZE" << std::endl;
             detector = AKAZE::create(); // SIFT or AKAZE
+            break;
+         case DETECTOR_SURF:
+            std::cout << "Detector: SURF" << std::endl;
+            detector = xfeatures2d::SURF::create(); // SIFT or AKAZE
             break;
          default:
             throw runtime_error("Detector not currently supported.");
@@ -226,8 +229,8 @@ namespace relative_pose
          resize(series.reference_frame(), reference_frame, Size(), 1. / resize_factor,  1. / resize_factor);
       } else 
       {
-         first_frame = series.first_frame();
-         second_frame = series.second_frame();
+         first_frame     = series.first_frame();
+         second_frame    = series.second_frame();
          reference_frame = series.reference_frame();
       }
 
@@ -249,7 +252,7 @@ namespace relative_pose
       vector<DMatch> matches_first_second = ratio_test(descriptors_first, descriptors_second, RATIO);
 
       for (DMatch& m : matches_first_second)
-         pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt;
+         pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt; // order the points so their match is at the same index
 
       /********* FILTER FIRST FRAME WITH SECOND FRAME *******************************
         Filter the first frame's descriptors, points and keypoints
@@ -269,7 +272,7 @@ namespace relative_pose
          }
       }
       /* Move the copies into the originals */
-      pts_first = pts_first_copy;
+      pts_first  = pts_first_copy;
       kpts_first = kpts_first_copy;
       pts_second = pts_second_copy;
       descriptors_first.release();
@@ -277,7 +280,7 @@ namespace relative_pose
       /********* FILTERING DONE ****************************************************/
 
       Mat_<double> camera_matrix    = series.camera_matrix() / resize_factor;
-      camera_matrix.at<double>(2,2) = 1;
+      camera_matrix(2,2) = 1;
       Mat dist_coeffs               = series.dist_coeffs();
       double focal                  = camera_matrix(0,0);
       Point2d principalPoint(camera_matrix(0,2), camera_matrix(1,2));
@@ -293,17 +296,19 @@ namespace relative_pose
       Mat R_first_second, t_first_second;
       int inliers = recoverPose(E, pts_first, pts_second, R_first_second, t_first_second, focal, principalPoint, mask);
 
+#ifdef DEBUG
       std::cout << "Motion first -> second: \n" << PoseData(R_first_second, t_first_second).to_string() << std::endl;
+#endif
 
       /********* FILTER FIRST AND SECOND FRAME WITH MASK ***************************
         Filter the first frame's descriptors, points and keypoints
         and the second frame's points with the mask from findessentialmat
        *****************************************************************************/
       /* clear old copies */
-      descriptors_first_filtered.release(); 
+      descriptors_first_filtered.release();  // probably redundant
       descriptors_first_filtered = Mat();
-      pts_second_copy.clear();
       pts_first_copy.clear();
+      pts_second_copy.clear();
       kpts_first_copy.clear();
       for (unsigned int i = 0; i < mask.rows; ++i)
       {
@@ -320,27 +325,28 @@ namespace relative_pose
       pts_second = pts_second_copy;
       descriptors_first.release();
       descriptors_first_filtered.copyTo(descriptors_first);
+      /********* FILTERING DONE ****************************************************/
 
       if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
 
-      /********* FILTERING DONE ****************************************************/
-
+      /********* 3D POINT TRIANGULATION ********************************************/
       Mat pnts4D;
-      Mat P1    = camera_matrix * Mat::eye(3, 4, CV_64FC1), P2; // first projection matrix
-      Mat p2[2] = { R_first_second, t_first_second };  // second projection matrix
+      Mat P1    = camera_matrix * Mat::eye(3, 4, CV_64FC1); // first projection matrix
+      Mat P2;                                               // second projection matrix
+      Mat p2[2] = { R_first_second, t_first_second };       // concat R and t to make P2
       hconcat(p2, 2, P2);
-      P2 = camera_matrix * P2;
+      P2 = camera_matrix * P2;                              // remove camera imperfections
       triangulatePoints(P1, P2, pts_first, pts_second, pnts4D);
       pnts4D = pnts4D.t();
-      Mat dehomogenized;
-      convertPointsFromHomogeneous(pnts4D, dehomogenized);
-      dehomogenized = dehomogenized.reshape(1); // instead of 3 channels and 1 col, we want 1 channel and 3 cols
+      Mat _3d_points;
+      convertPointsFromHomogeneous(pnts4D, _3d_points);
+      _3d_points = _3d_points.reshape(1);             // instead of 3 channels and 1 col, we want 1 channel and 3 cols
 
       /*** SOLVEPNP ***/
 #ifdef DEBUG
       std::cout << "First -> Reference " << std::endl;
 #endif
-      PoseData d = relative_pose(descriptors_first, pts_first, dehomogenized, 
+      PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
             first_frame, reference_frame, detector, RATIO, camera_matrix, show_matches);
       Mat t_first_ref = d.t, 
           R_first_ref = d.R;
@@ -359,11 +365,13 @@ namespace relative_pose
 #ifdef DEBUG
          std::cout << "First -> Frame " << i << std::endl;
 #endif
-         PoseData d = relative_pose(descriptors_first, pts_first, dehomogenized, 
+         PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
                first_frame, current_frame, detector, RATIO, camera_matrix, show_matches);
          Mat t_first_current = d.t,
              R_first_current = d.R;
-         ret[i] = PoseData(R_first_current, t_first_current);
+         Mat t_current_ref   = -R_first_ref * R_first_current.t() * t_first_current + t_first_ref;
+         Mat R_current_ref   = R_first_ref * R_first_current.t();
+         ret[i] = PoseData(R_current_ref, t_current_ref);
       }
 
       return ret;
