@@ -1,5 +1,5 @@
 # Table of Contents 
-Unfortunately, links don't work.
+Unfortunately, links don't work outside of GitHub.
 
 - [How to use `solvePnP`](#how-to-use-solvepnp)
     - [General Usage](#general-usage)
