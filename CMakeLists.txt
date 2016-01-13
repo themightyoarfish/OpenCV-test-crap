@@ -8,6 +8,7 @@ find_package(OpenCV REQUIRED PATHS /usr/local/share/OpenCV NO_DEFAULT_PATH) # ma
 find_package(Boost REQUIRED filesystem system)
 
 if(OpenCV_FOUND)
+   include_directories("3rdparty")
    include_directories(${OpenCV_INCLUDE_DIRS})
    include_directories(".")
    include_directories("stereo")
