@@ -1,9 +1,8 @@
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/1.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/0_ref.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/2.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/3.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/4.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/5.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/9.JPG
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/0_ref.JPG
+../Data/Gut Rosenkrantz/first_frame_centered.JPG
+../Data/Gut Rosenkrantz/1.JPG
+../Data/Gut Rosenkrantz/0_ref.JPG
+../Data/Gut Rosenkrantz/2.JPG
+../Data/Gut Rosenkrantz/3.JPG
+../Data/Gut Rosenkrantz/4.JPG
+../Data/Gut Rosenkrantz/5.JPG
+../Data/Gut Rosenkrantz/9.JPG

@@ -1,8 +1,7 @@
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->1.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->0_ref.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->2.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->3.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->4.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->5.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->9.JPG_pts
-/Users/Rasmus/Documents/Uni/HiWi/OpenCVTest/Data/Gut Rosenkrantz/first_frame_centered.JPG->0_ref.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->1.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->0_ref.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->2.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->3.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->4.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->5.JPG_pts
+../Data/Gut Rosenkrantz/first_frame_centered.JPG->9.JPG_pts

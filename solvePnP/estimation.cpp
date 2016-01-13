@@ -296,7 +296,7 @@ namespace relative_pose
       pnts4D = pnts4D.t();
       Mat _3d_points;
       convertPointsFromHomogeneous(pnts4D, _3d_points);
-      _3d_points = _3d_points.reshape(1);             // instead of 3 channels and 1 col, we want 1 channel and 3 cols
+      _3d_points = _3d_points.reshape(1);                   // instead of 3 channels and 1 col, we want 1 channel and 3 cols
 
       /*** SOLVEPNP ***/
 #ifdef DEBUG

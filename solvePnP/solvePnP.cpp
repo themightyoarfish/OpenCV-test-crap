@@ -161,7 +161,7 @@ int main(int argc, const char *argv[])
       std::cout << "Starting estimation..." << std::endl;
       vector<PoseData> poses = runEstimateAuto(series, interactive_arg.getValue(), resize_arg.getValue(), dtype);
       int c = 0;
-      std::cout << "Estimates for transform from first frame in the order of files from the input file list." << std::endl;
+      std::cout << "Estimates for transform from current frame to reference frame in the order of files from the input file list." << std::endl;
       for (auto& i : poses)
       {
          cout << c++ << endl;
