@@ -156,15 +156,15 @@ namespace relative_pose
       {
          case DETECTOR_SIFT:
             std::cout << "Detector: SIFT" << std::endl;
-            detector = xfeatures2d::SIFT::create(); // SIFT or AKAZE
+            detector = xfeatures2d::SIFT::create(); 
             break;
          case DETECTOR_KAZE:
             std::cout << "Detector: AKAZE" << std::endl;
-            detector = AKAZE::create(); // SIFT or AKAZE
+            detector = AKAZE::create();
             break;
          case DETECTOR_SURF:
             std::cout << "Detector: SURF" << std::endl;
-            detector = xfeatures2d::SURF::create(); // SIFT or AKAZE
+            detector = xfeatures2d::SURF::create(); 
             break;
          default:
             throw runtime_error("Detector not currently supported.");
@@ -294,7 +294,7 @@ namespace relative_pose
       P2 = camera_matrix * P2;                              // remove camera imperfections
       triangulatePoints(P1, P2, pts_first, pts_second, pnts4D);
       pnts4D = pnts4D.t();
-      Mat _3d_points;
+      eat _3d_points;
       convertPointsFromHomogeneous(pnts4D, _3d_points);
       _3d_points = _3d_points.reshape(1);                   // instead of 3 channels and 1 col, we want 1 channel and 3 cols
 
