@@ -22,6 +22,7 @@ namespace relative_pose
       switch (dtype)
       {
          case DETECTOR_SIFT:
+         case DETECTOR_SURF:
             matcher = BFMatcher(NORM_L2); // Change for AKAZE
             break;
          case DETECTOR_KAZE:
@@ -84,15 +85,6 @@ namespace relative_pose
       return vector<Point2f>(v.begin(), new_end);
    }
 
-   /**
-    * @brief Convert two sets of keypoints and mathces between them to two vectors
-    * of points where corresponding points are at the same index.
-    *
-    * @param matches The matches indexing into the keypoint arrays
-    * @param kpts1 First keypoint set
-    * @param kpts2 Second keypoint set
-    * @return A tuple with the ordered point vectors
-    */
    tuple<vector<Point2f>, vector<Point2f>>
       matches_to_points(vector<DMatch>& matches, vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2)
       {
@@ -106,31 +98,7 @@ namespace relative_pose
          return std::make_tuple(imgpts1, imgpts2);
       }
 
-   /**
-    * @brief Compute relative pose between two images given as feature descriptors
-    * for a reference image and a cv::Mat for the train image.
-    *
-    * This function computes descriptors from the train image \p current_frame and
-    * matches them with the training descriptors (intended to be the firs frame's).
-    * It implements the estimation procedure based on finding correspondences
-    * between precomputed world points and features found in the \p current_frame
-    * and applying cv::solvePnP. It optionally shows the matches finally used for user
-    * inspection.
-    *
-    * @param descriptors1 The reference descriptors 
-    * @param pts_first Vector of cv::Point2f of the points belonging to the
-    * descriptors.
-    * @param _3d_pts The corresponding world points 
-    * @param first_frame The image used to obtain the \p descriptors1. Used to
-    * display the matches.
-    * @param current_frame The image to compute the relative pose for 
-    * @param detector The feature detector to use for finding points of interest
-    * @param ratio The ratio used for the relative_pose::ratio_test
-    * @param camera_matrix The camear intrinsics
-    * @param show_matches Whether or not to display matches. Defaults to \c false
-    * @return A relative_pose::PoseData object
-    */
-   PoseData relative_pose(Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, Ptr<Feature2D> detector, float ratio, Mat& camera_matrix, bool show_matches = false)
+   PoseData relative_pose(Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, Ptr<Feature2D> detector, float ratio, Mat& camera_matrix, bool show_matches)
    {
       Mat rvec, t_first_current; // note the indices are reversed compared to my thesis
       Mat R_first_current;
@@ -175,18 +143,6 @@ namespace relative_pose
       return PoseData(R_first_current, t_first_current);
    }
 
-   /**
-    * @brief Run the estimatino with automatic features 
-    *
-    * @param series The images to operate on 
-    * @param show_matches Whether or not to display the matches between each
-    * pair of images 
-    * @param resize_factor Scale actor to apply to the images (smaller is much
-    * faster, but fewer features and possibly lower quality estimates)
-    * @param dtype The type of detector to use 
-    * @return An std::vector of relative_pose::PoseData objects, one for each
-    * intermediate image
-    */
    vector<PoseData> runEstimateAuto(const ImageSeries& series, bool show_matches, unsigned int resize_factor, detector_type dtype)
    {
       unsigned int n; // Number of points detected in first frame
