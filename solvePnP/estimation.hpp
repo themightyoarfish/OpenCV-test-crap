@@ -119,7 +119,7 @@ namespace relative_pose
     * @param show_matches Whether or not to display matches. Defaults to \c false
     * @return A relative_pose::PoseData object
     */
-   PoseData relative_pose(cv::Mat& descriptors_first, std::vector<cv::Point2f> pts_first, cv::Mat& _3d_pts, cv::Mat& first_frame, cv::Mat& current_frame, cv::Ptr<cv::Feature2D> detector, float ratio, cv::Mat& camera_matrix, bool show_matches = false);
+   PoseData relative_pose(cv::Mat& descriptors_first, std::vector<cv::Point2f> pts_first, cv::Mat& _3d_pts, cv::Mat& first_frame, cv::Mat& current_frame, detector_type dtype, float ratio, cv::Mat& camera_matrix, bool show_matches = false);
 
    /**
     * @brief Run the estimatino with automatic features 

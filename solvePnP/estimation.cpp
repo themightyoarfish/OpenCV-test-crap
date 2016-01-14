@@ -98,14 +98,29 @@ namespace relative_pose
          return std::make_tuple(imgpts1, imgpts2);
       }
 
-   PoseData relative_pose(Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, Ptr<Feature2D> detector, float ratio, Mat& camera_matrix, bool show_matches)
+   PoseData relative_pose(Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, detector_type dtype, float ratio, Mat& camera_matrix, bool show_matches)
    {
       Mat rvec, t_first_current; // note the indices are reversed compared to my thesis
       Mat R_first_current;
       Mat descriptors_current;
       vector<KeyPoint> kpts_current;
+      Ptr<Feature2D> detector;
+      switch (dtype)
+      {
+         case DETECTOR_SIFT:
+            detector = xfeatures2d::SIFT::create(); 
+            break;
+         case DETECTOR_KAZE:
+            detector = AKAZE::create();
+            break;
+         case DETECTOR_SURF:
+            detector = xfeatures2d::SURF::create(); 
+            break;
+         default:
+            throw runtime_error("Detector not currently supported.");
+      }
       detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current); // TODO: make a new detector
-      vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, ratio);
+      vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, ratio, dtype);
 
       vector<Point2f> pts_current;
       pts_current.resize(kpts_current.size(), INVALID_PT);
@@ -205,7 +220,7 @@ namespace relative_pose
       std::transform(kpts_first.begin(), kpts_first.end(), pts_first.begin(), [&](KeyPoint& k) { return k.pt; });
 
       /* Ratio test the first and second frame */
-      vector<DMatch> matches_first_second = ratio_test(descriptors_first, descriptors_second, RATIO);
+      vector<DMatch> matches_first_second = ratio_test(descriptors_first, descriptors_second, RATIO, dtype);
 
       for (DMatch& m : matches_first_second)
          pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt; // order the points so their match is at the same index
@@ -303,7 +318,7 @@ namespace relative_pose
       std::cout << "First -> Reference " << std::endl;
 #endif
       PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
-            first_frame, reference_frame, detector, RATIO, camera_matrix, show_matches);
+            first_frame, reference_frame, dtype, RATIO, camera_matrix, show_matches);
       Mat t_first_ref = d.t, 
           R_first_ref = d.R;
 
@@ -322,7 +337,7 @@ namespace relative_pose
          std::cout << "First -> Frame " << i << std::endl;
 #endif
          PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
-               first_frame, current_frame, detector, RATIO, camera_matrix, show_matches);
+               first_frame, current_frame, dtype, RATIO, camera_matrix, show_matches);
          Mat t_first_current = d.t,
              R_first_current = d.R;
          Mat t_current_ref   = -R_first_ref * R_first_current.t() * t_first_current + t_first_ref;
