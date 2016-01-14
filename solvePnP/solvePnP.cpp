@@ -117,10 +117,12 @@ int main(int argc, const char *argv[])
       }
       std::cout << "Starting estimation..." << std::endl;
       vector<PoseData> poses = runEstimate(series, interactive_arg.getValue());
+      int c = 0;
       for (auto& i : poses)
       {
-         cout << "R: " << rotationMatToEuler(i.R) << endl;
-         cout << "t: " << i.t << endl;
+         cout << c++ << endl;
+         cout << "\tR: " << rotationMatToEuler(i.R) << endl;
+         cout << "\tt: " << i.t.t() << endl;
       }
    } catch (std::exception& e)
    {
