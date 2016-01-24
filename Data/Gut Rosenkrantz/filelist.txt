@@ -6,3 +6,4 @@
 ../Data/Gut Rosenkrantz/4.JPG
 ../Data/Gut Rosenkrantz/5.JPG
 ../Data/Gut Rosenkrantz/9.JPG
+../Data/Gut Rosenkrantz/0_ref.JPG

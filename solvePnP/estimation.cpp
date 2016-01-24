@@ -4,6 +4,8 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
 
+#include <set>
+
 using namespace cv;
 using namespace std;
 namespace relative_pose 
@@ -46,6 +48,20 @@ namespace relative_pose
       return matches;
    }
 
+   /**
+    * @brief Overload for when the keypoints are unordered and not all are
+    * matched.
+    */
+   void displayMatches(vector<KeyPoint> kpts1, vector<KeyPoint> kpts2, Mat img1, Mat img2, vector<DMatch> matches)
+   {
+      Mat matchesImg;
+      drawMatches(img1, kpts1, img2, kpts2, matches, matchesImg);
+      const string WIN_NAME = "Matching";
+      namedWindow(WIN_NAME, WINDOW_NORMAL);
+      imshow(WIN_NAME, matchesImg);
+      waitKey(0);
+
+   }
    void displayMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
    {
       /* Fail if vectors have different size */
@@ -70,7 +86,7 @@ namespace relative_pose
 
       /* Draw the matches */
       Mat matchesImg;
-      displayMatches(img1,k1,img2,k2,matches,matchesImg);
+      drawMatches(img1, k1, img2, k2,matches, matchesImg);
 
       /* Show the window */
       const string WIN_NAME = "Matching";
@@ -188,7 +204,7 @@ namespace relative_pose
       Mat first_frame, second_frame, reference_frame;
 
       /* Parameter for ratio test */
-      const float RATIO = 0.8;
+      const float RATIO = 0.7;
 
       BFMatcher matcher;
 
@@ -224,6 +240,7 @@ namespace relative_pose
 
       for (DMatch& m : matches_first_second)
          pts_second[m.queryIdx] = kpts_second[m.trainIdx].pt; // order the points so their match is at the same index
+      
 
       /********* FILTER FIRST FRAME WITH SECOND FRAME *******************************
         Filter the first frame's descriptors, points and keypoints
@@ -241,6 +258,7 @@ namespace relative_pose
             kpts_first_copy.push_back(kpts_first[i]); // also filter keypoints
             descriptors_first_filtered.push_back(descriptors_first.row(i)); // push the corresponding descriptor
          }
+
       }
       /* Move the copies into the originals */
       pts_first  = pts_first_copy;
@@ -260,8 +278,8 @@ namespace relative_pose
       Mat E = findEssentialMat(pts_first, pts_second, 
             focal, principalPoint,
             RANSAC,
-            0.99, // confidence
-            3, // distance to be considered outlier
+            0.95, // confidence
+            10, // distance to be considered outlier
             mask);
 
       Mat R_first_second, t_first_second;
