@@ -46,7 +46,7 @@ namespace relative_pose
       return matches;
    }
 
-   void drawMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
+   void displayMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
    {
       /* Fail if vectors have different size */
       if (not (pts1.size() == pts2.size()))
@@ -70,7 +70,7 @@ namespace relative_pose
 
       /* Draw the matches */
       Mat matchesImg;
-      drawMatches(img1,k1,img2,k2,matches,matchesImg);
+      displayMatches(img1,k1,img2,k2,matches,matchesImg);
 
       /* Show the window */
       const string WIN_NAME = "Matching";
@@ -147,7 +147,7 @@ namespace relative_pose
       std::cout << "pts_first_for_current: " << pts_first_for_current.size() << std::endl;
       std::cout << "_3d_pts_good_subset: " << _3d_pts_good_subset.size() << std::endl;
 #endif
-      if (show_matches) drawMatches(pts_first_for_current, pts_current, first_frame, current_frame);
+      if (show_matches) displayMatches(pts_first_for_current, pts_current, first_frame, current_frame);
 
       solvePnP(_3d_pts_good_subset, pts_current, camera_matrix, noArray(), rvec, t_first_current);
       Rodrigues(rvec,R_first_current);
@@ -298,7 +298,7 @@ namespace relative_pose
       descriptors_first_filtered.copyTo(descriptors_first);
       /********* FILTERING DONE ****************************************************/
 
-      if (show_matches) drawMatches(pts_first, pts_second, first_frame, second_frame);
+      if (show_matches) displayMatches(pts_first, pts_second, first_frame, second_frame);
 
       /********* 3D POINT TRIANGULATION ********************************************/
       Mat pnts4D;
