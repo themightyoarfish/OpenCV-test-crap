@@ -10,12 +10,11 @@ namespace relative_pose
 
 class ImageSeries;
 
-
-typedef std::vector<std::pair<cv::Point2i,cv::Point2i>> CorrVec;
+typedef std::vector<std::pair<cv::Point2f,cv::Point2f>> CorrVec;
 
 /* Eye matrix */
 static double cam_mat_data[] = {1.,0.,0.,0.,1.,0.,0.,0.,1.};
-static cv::Mat default_cam_mat(3,3, CV_64FC1, cam_mat_data);
+static const cv::Mat DEFAULT_CAM_MAT(3,3, CV_64FC1, cam_mat_data);
 
 void convertToKeypoints(const CorrVec& v, std::vector<cv::KeyPoint>& kpts1, std::vector<cv::KeyPoint>& kpts2, 
       float size = 10, float angle = -1, float response = 0, int octave = 0, int classid = -1);
@@ -36,10 +35,13 @@ class ImageSeries
       cv::Mat mCameraMatrix;
       cv::Mat mDistCoeffs;
       static void sortPoints(CorrVec& v);
+      void insertAndUndistort(cv::Mat m, unsigned int index);
+      void insertAndUndistort(cv::Mat m);
+      void undistortCorrespodences(CorrVec& v);
 
    public:
-      explicit ImageSeries(cv::Mat&& first_frame, cv::Mat&& second_frame, cv::Mat&& reference, 
-            cv::Mat&& camera_matrix = std::move(default_cam_mat), cv::Mat&& dist_coeffs=cv::Mat(1,5,0));
+      explicit ImageSeries(const cv::Mat&& first_frame, const cv::Mat&& second_frame, const cv::Mat&& reference_frame, 
+            const cv::Mat&& camera_matrix = std::move(DEFAULT_CAM_MAT), const cv::Mat&& dist_coeffs=cv::Mat(1,5,0));
       explicit ImageSeries(std::vector<cv::Mat> mats);
       const cv::Mat& first_frame(void)                   const;
       const cv::Mat& second_frame(void)                  const;

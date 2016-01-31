@@ -19,6 +19,25 @@ void ImageSeries::sortPoints(CorrVec& v)
        );
 }
 
+void ImageSeries::undistortCorrespodences(CorrVec& v)
+{
+   // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+}
+
+void ImageSeries::insertAndUndistort(Mat m)
+{
+   Mat dst;
+   undistort(m, dst, mCameraMatrix, mDistCoeffs, mCameraMatrix);
+   mImages.push_back(dst);
+}
+
+void ImageSeries::insertAndUndistort(Mat m, unsigned int index)
+{
+   Mat dst;
+   undistort(m, dst, mCameraMatrix, mDistCoeffs, mCameraMatrix);
+   mImages[index] = dst;
+}
+
 void ImageSeries::show_matches(unsigned int indexl, unsigned int indexr, const CorrVec& v) const
 {      
    const unsigned int n = v.size();
@@ -34,18 +53,19 @@ void ImageSeries::show_matches(unsigned int indexl, unsigned int indexr, const C
    waitKey(0);
 }
 
-ImageSeries::ImageSeries(Mat&& first_frame, Mat&& second_frame, Mat&& reference,
-      Mat&& camera_matrix, Mat&& dist_coeffs)
+ImageSeries::ImageSeries(const Mat&& first_frame, const Mat&& second_frame, const Mat&& reference_frame,
+      const Mat&& camera_matrix, const Mat&& dist_coeffs)
 {
-   if (!(first_frame.data && second_frame.data && reference.data))
+   if (!(first_frame.data && second_frame.data && reference_frame.data))
       throw std::invalid_argument("At least one image has no data.");
-   mImages = vector<Mat>(3);
-   mImages[0] = first_frame;
-   mImages[1] = second_frame;
-   mImages[2] = reference;
+   /* Important to assign before calling insertAndUndistort */
+   mCameraMatrix    = camera_matrix;
+   mDistCoeffs      = dist_coeffs;
+   mImages          = vector<Mat>(3);
+   insertAndUndistort(first_frame, 0);
+   insertAndUndistort(second_frame, 1);
+   insertAndUndistort(reference_frame, 2);
    mCorrespondences = std::vector<CorrVec>(3);
-   mCameraMatrix = camera_matrix;
-   mDistCoeffs = dist_coeffs;
 }
 
 ImageSeries::ImageSeries(vector<Mat> mats)
@@ -77,13 +97,18 @@ const vector<Mat> ImageSeries::frames(void) const
 
 void ImageSeries::set_images(std::vector<cv::Mat> imgs)
 {
-   mImages.insert(mImages.end(), imgs.begin(), imgs.end());
+   for (Mat& m : imgs)
+   {
+      insertAndUndistort(m);
+   }
+   /* mImages.insert(mImages.end(), imgs.begin(), imgs.end()); */
    mCorrespondences.reserve(mImages.size());
 
 }
 void ImageSeries::add_image(cv::Mat img)
 {
-   mImages.push_back(img);
+   /* mImages.push_back(img); */
+   insertAndUndistort(img);
 }
 
 void ImageSeries::add_image(cv::Mat img, CorrVec v)

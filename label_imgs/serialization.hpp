@@ -2,9 +2,9 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <fstream>
-using cv::Point2i;
+using cv::Point2f;
 using std::ifstream;
-ifstream& operator>>(ifstream& s, Point2i& val)
+ifstream& operator>>(ifstream& s, Point2f& val)
 {
    s.seekg(1, std::ios_base::cur);
    s >> val.x;
