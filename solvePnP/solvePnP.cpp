@@ -133,7 +133,7 @@ int main(int argc, const char *argv[])
       {
          for (unsigned int i = 0; i < correspondence_filenames.size(); ++i) 
          {
-            CorrVec&& corr = deserialize_vector<Point2i,Point2i>(correspondence_filenames[i]);
+            CorrVec&& corr = deserialize_vector<Point2f,Point2f>(correspondence_filenames[i]);
             std::cout << "Processing correspondences " << correspondence_filenames[i] << std::endl;
             switch (i)
             {

@@ -62,6 +62,7 @@ namespace relative_pose
       waitKey(0);
 
    }
+
    void displayMatches(vector<Point2f> pts1, vector<Point2f> pts2, Mat img1, Mat img2)
    {
       /* Fail if vectors have different size */
@@ -114,7 +115,24 @@ namespace relative_pose
          return std::make_tuple(imgpts1, imgpts2);
       }
 
-   PoseData relative_pose(Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, detector_type dtype, float ratio, Mat& camera_matrix, bool show_matches)
+   inline void displayKeypoints(vector<KeyPoint>& kpts1, vector<KeyPoint>& kpts2, Mat& img1, Mat& img2)
+   {
+      CV_Assert(img1.type() == img2.type());
+      CV_Assert(img1.size() == img2.size());
+
+      Mat out(img1.rows, 2 * img1.cols, img1.type());
+      Mat roi_left = Mat(out, Range::all(), Range(0, img1.cols));
+      Mat roi_right = Mat(out, Range::all(), Range(img1.cols, 2 * img1.cols));
+      drawKeypoints(img2, kpts2, roi_right);
+      drawKeypoints(img1, kpts1, roi_left);
+      /* Show the window */
+      const string WIN_NAME = "Keypoints first and current";
+      namedWindow(WIN_NAME, WINDOW_NORMAL);
+      imshow(WIN_NAME, out);
+      waitKey(0);
+   }
+
+   PoseData relative_pose(vector<KeyPoint>& kpts_first, Mat& descriptors_first, vector<Point2f> pts_first, Mat& _3d_pts, Mat& first_frame, Mat& current_frame, detector_type dtype, float ratio, Mat& camera_matrix, bool show_matches)
    {
       Mat rvec, t_first_current; // note the indices are reversed compared to my thesis
       Mat R_first_current;
@@ -135,7 +153,8 @@ namespace relative_pose
          default:
             throw runtime_error("Detector not currently supported.");
       }
-      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current); // TODO: make a new detector
+      detector->detectAndCompute(current_frame, noArray(), kpts_current, descriptors_current);
+
       vector<DMatch>  matches_first_current = ratio_test(descriptors_first, descriptors_current, ratio, dtype);
 
       vector<Point2f> pts_current;
@@ -204,7 +223,7 @@ namespace relative_pose
       Mat first_frame, second_frame, reference_frame;
 
       /* Parameter for ratio test */
-      const float RATIO = 0.7;
+      const float RATIO = 0.8;
 
       BFMatcher matcher;
 
@@ -335,7 +354,7 @@ namespace relative_pose
 #ifdef DEBUG
       std::cout << "First -> Reference " << std::endl;
 #endif
-      PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
+      PoseData d = relative_pose(kpts_first, descriptors_first, pts_first, _3d_points, 
             first_frame, reference_frame, dtype, RATIO, camera_matrix, show_matches);
       Mat t_first_ref = d.t, 
           R_first_ref = d.R;
@@ -354,7 +373,7 @@ namespace relative_pose
 #ifdef DEBUG
          std::cout << "First -> Frame " << i << std::endl;
 #endif
-         PoseData d = relative_pose(descriptors_first, pts_first, _3d_points, 
+         PoseData d = relative_pose(kpts_first, descriptors_first, pts_first, _3d_points, 
                first_frame, current_frame, dtype, RATIO, camera_matrix, show_matches);
          Mat t_first_current = d.t,
              R_first_current = d.R;
